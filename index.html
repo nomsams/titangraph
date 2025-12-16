@@ -3,924 +3,460 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TitanGraph v12 | Enterprise Intelligence</title>
+    <title>TitanGraph v13 | Robust Edition</title>
     
-    <!-- CORE ENGINES -->
+    <!-- LIBRARIES -->
     <script src="//unpkg.com/three"></script>
     <script src="//unpkg.com/three-spritetext"></script>
     <script src="//unpkg.com/force-graph"></script>
     <script src="//unpkg.com/3d-force-graph"></script>
     
-    <!-- UI ASSETS -->
+    <!-- ICONS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
 
     <style>
-        /* --- VARIABLES --- */
         :root {
-            --bg-dark: #050505;
-            --bg-panel: #0b0d10;
-            --bg-panel-light: #15181e;
-            --border: #252830;
+            --bg: #050505;
+            --panel: #111;
+            --border: #333;
             --accent: #00f2ff;
-            --accent-dim: rgba(0, 242, 255, 0.15);
-            --text-main: #e0e6ed;
-            --text-muted: #6c757d;
-            --danger: #ff4757;
-            --success: #2ed573;
-            --warning: #ffa502;
+            --text: #eee;
+            --muted: #777;
+            --danger: #ff4444;
+            --success: #00ff9d;
             --font-ui: 'Inter', sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
-            --shadow: 0 8px 24px rgba(0,0,0,0.6);
         }
 
-        /* --- BASE --- */
-        * { box-sizing: border-box; outline: none; user-select: none; scrollbar-width: thin; scrollbar-color: var(--border) var(--bg-panel); }
-        body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text-main); font-family: var(--font-ui); font-size: 13px; }
+        * { box-sizing: border-box; outline: none; user-select: none; }
+        body { margin: 0; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 13px; }
+
+        /* GRID LAYOUT */
+        #app { display: grid; grid-template-columns: 60px 1fr 350px; grid-template-rows: 50px 1fr 200px; height: 100vh; width: 100vw; }
         
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: var(--bg-panel); }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+        /* HEADER */
+        header { grid-column: 1 / -1; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 100; }
+        .brand { font-family: var(--font-mono); font-weight: 700; color: var(--accent); font-size: 1.2rem; }
+        .tools { display: flex; gap: 10px; }
 
-        /* --- GRID LAYOUT --- */
-        #app-container {
-            display: grid;
-            grid-template-columns: 64px 1fr 360px;
-            grid-template-rows: 50px 1fr 200px;
-            height: 100vh; width: 100vw;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-        }
-        body.log-minimized #app-container { grid-template-rows: 50px 1fr 36px; }
-        body.inspector-closed #app-container { grid-template-columns: 64px 1fr 0px; }
+        /* TOOLBAR */
+        #toolbar { grid-column: 1; grid-row: 2 / -1; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding-top: 20px; gap: 15px; z-index: 90; }
+        .t-btn { width: 40px; height: 40px; border-radius: 8px; background: transparent; border: 1px solid transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; font-size: 1.1rem; transition: 0.2s; }
+        .t-btn:hover { color: var(--text); background: #222; }
+        .t-btn.active { background: rgba(0, 242, 255, 0.1); color: var(--accent); border-color: var(--accent); }
 
-        /* --- HEADER --- */
-        header {
-            grid-column: 1 / -1; grid-row: 1;
-            background: var(--bg-panel); border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between; padding: 0 20px;
-            z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        }
-        .brand { 
-            font-family: var(--font-mono); font-weight: 700; color: var(--accent); 
-            font-size: 1.2rem; letter-spacing: 1px; display: flex; gap: 10px; align-items: center; text-shadow: 0 0 10px var(--accent-dim);
-        }
-        .header-tools { display: flex; gap: 8px; }
+        /* VIEWPORT */
+        #viewport { grid-column: 2; grid-row: 2; position: relative; overflow: hidden; background: #000; }
+        #graph-canvas { width: 100%; height: 100%; }
 
-        /* --- TOOLBAR --- */
-        #toolbar {
-            grid-column: 1; grid-row: 2 / -1;
-            background: var(--bg-panel); border-right: 1px solid var(--border);
-            display: flex; flex-direction: column; align-items: center; padding-top: 20px; gap: 12px;
-            z-index: 90;
-        }
-        .tool-btn {
-            width: 42px; height: 42px; border-radius: 8px; border: 1px solid transparent;
-            background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.2s;
-            display: grid; place-items: center; font-size: 1.1rem; position: relative;
-        }
-        .tool-btn:hover { color: var(--text-main); background: var(--bg-panel-light); transform: translateX(2px); }
-        .tool-btn.active { 
-            background: var(--accent-dim); color: var(--accent); border-color: var(--accent); 
-            box-shadow: 0 0 15px var(--accent-dim);
-        }
-        .tool-btn[data-tooltip]:hover::after {
-            content: attr(data-tooltip); position: absolute; left: 55px; background: var(--bg-panel-light);
-            padding: 6px 12px; border: 1px solid var(--border); border-radius: 4px; color: var(--text-main);
-            font-size: 0.8rem; white-space: nowrap; z-index: 1000; pointer-events: none; box-shadow: var(--shadow);
-        }
-        .separator { width: 20px; height: 1px; background: var(--border); margin: 5px 0; }
+        /* OVERLAYS */
+        .overlay { position: absolute; background: rgba(15, 17, 21, 0.95); border: 1px solid var(--border); border-radius: 6px; padding: 10px; z-index: 10; }
+        #search { top: 20px; left: 20px; display: flex; gap: 10px; width: 300px; }
+        #search input { background: transparent; border: none; color: white; width: 100%; font-family: var(--font-mono); }
+        #stats { top: 20px; right: 20px; font-size: 0.8rem; color: var(--muted); text-align: right; }
+        #zoom { bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 5px; }
+        .z-btn { width: 30px; height: 30px; background: var(--panel); border: 1px solid var(--border); color: var(--text); cursor: pointer; border-radius: 4px; }
 
-        /* --- VIEWPORT --- */
-        #viewport {
-            grid-column: 2; grid-row: 2;
-            position: relative; overflow: hidden; background: #000;
-            background-image: radial-gradient(circle at center, #111 0%, #000 100%);
-        }
-        #graph-canvas { width: 100%; height: 100%; cursor: default; }
+        /* INSPECTOR */
+        #inspector { grid-column: 3; grid-row: 2 / -1; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; z-index: 90; }
+        .p-head { padding: 15px; border-bottom: 1px solid var(--border); font-weight: 600; color: var(--accent); display: flex; justify-content: space-between; align-items: center; }
+        .p-body { padding: 0; overflow-y: auto; flex: 1; }
+        .p-sec { padding: 15px; border-bottom: 1px solid var(--border); }
+        .form-row { margin-bottom: 10px; }
+        .form-row label { display: block; font-size: 0.7rem; color: var(--muted); margin-bottom: 4px; }
+        .form-row input, .form-row select { width: 100%; background: #050505; border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 4px; font-family: var(--font-mono); }
+        .json-box { background: #050505; padding: 10px; border-radius: 4px; border: 1px solid var(--border); font-family: var(--font-mono); font-size: 0.75rem; color: #a8b2d1; overflow: auto; max-height: 300px; white-space: pre-wrap; }
 
-        /* Overlays */
-        .overlay-panel {
-            position: absolute; background: rgba(11, 13, 16, 0.95); backdrop-filter: blur(8px);
-            border: 1px solid var(--border); border-radius: 6px; padding: 10px; z-index: 10;
-            box-shadow: var(--shadow);
-        }
-        #search-bar { top: 20px; left: 20px; display: flex; align-items: center; gap: 10px; width: 320px; }
-        #search-input { background: transparent; border: none; color: white; width: 100%; font-family: var(--font-mono); font-size: 0.9rem; }
-        
-        #analytics-overlay { top: 20px; right: 20px; font-size: 0.8rem; color: var(--text-muted); text-align: right; min-width: 160px; }
-        .stat-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
-        .stat-val { color: var(--accent); font-weight: bold; font-family: var(--font-mono); }
+        /* LOGS */
+        #logs { grid-column: 2; grid-row: 3; background: #000; border-top: 1px solid var(--accent); display: flex; flex-direction: column; font-family: var(--font-mono); z-index: 80; }
+        .l-bar { height: 35px; background: var(--panel); border-bottom: 1px solid #222; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; cursor: pointer; }
+        #l-cont { flex: 1; overflow-y: auto; padding: 10px; font-size: 0.8rem; color: #ccc; }
+        .l-ent { margin-bottom: 4px; display: flex; gap: 10px; border-bottom: 1px solid #111; padding-bottom: 2px; }
+        .l-ts { color: #555; min-width: 70px; }
+        .l-inf { color: var(--accent); } .l-err { color: var(--danger); } .l-suc { color: var(--success); }
 
-        #zoom-controls { bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; }
-        .mini-btn { width: 32px; height: 32px; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-main); cursor: pointer; border-radius: 6px; font-size: 0.9rem; display: grid; place-items: center; transition: 0.2s; }
-        .mini-btn:hover { background: var(--bg-panel-light); border-color: var(--accent); }
+        /* UTILS */
+        .btn { background: var(--accent); color: #000; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: 700; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 8px; }
+        .btn:hover { filter: brightness(1.1); }
+        .btn-sec { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+        .btn-sec:hover { border-color: var(--text); color: var(--text); }
 
-        /* --- INSPECTOR --- */
-        #inspector {
-            grid-column: 3; grid-row: 2 / -1;
-            background: var(--bg-panel); border-left: 1px solid var(--border);
-            display: flex; flex-direction: column; overflow: hidden; z-index: 90;
-        }
-        .panel-header {
-            padding: 15px; border-bottom: 1px solid var(--border); background: var(--bg-panel-light);
-            font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--accent);
-            display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;
-        }
-        .panel-content { padding: 0; overflow-y: auto; flex: 1; }
-        
-        .prop-section { border-bottom: 1px solid var(--border); padding: 20px; }
-        .prop-title { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; font-weight: 700; display: flex; justify-content: space-between; letter-spacing: 0.5px; }
-        
-        .form-group { margin-bottom: 15px; }
-        .form-label { display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; }
-        .form-input { 
-            width: 100%; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-main);
-            padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.85rem; transition: 0.2s;
-        }
-        .form-input:focus { border-color: var(--accent); }
-        textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.5; }
-
-        .json-pre {
-            background: #080808; padding: 10px; border-radius: 6px; border: 1px solid #222;
-            font-family: var(--font-mono); font-size: 0.75rem; color: #a8b2d1;
-            overflow-x: auto; white-space: pre-wrap; max-height: 300px;
-        }
-
-        /* --- LOGS --- */
-        #log-panel {
-            grid-column: 2; grid-row: 3;
-            background: #000; border-top: 1px solid var(--accent);
-            display: flex; flex-direction: column; font-family: var(--font-mono); z-index: 80;
-        }
-        .log-toolbar {
-            height: 36px; background: var(--bg-panel); border-bottom: 1px solid #222;
-            display: flex; align-items: center; justify-content: space-between; padding: 0 15px; cursor: pointer;
-        }
-        .log-toolbar:hover { background: var(--bg-panel-light); }
-        #log-container { flex: 1; overflow-y: auto; padding: 10px 15px; font-size: 0.8rem; color: #ccc; }
-        
-        .log-entry { margin-bottom: 5px; display: flex; gap: 15px; border-bottom: 1px solid #111; padding-bottom: 3px; }
-        .log-ts { color: #555; min-width: 75px; }
-        .log-msg { word-break: break-all; }
-        .log-info { color: var(--accent); }
-        .log-error { color: var(--danger); }
-        .log-success { color: var(--success); }
-        .log-warn { color: var(--warning); }
-
-        /* --- CONTEXT MENU --- */
-        #ctx-menu {
-            position: fixed; display: none; background: var(--bg-panel); border: 1px solid var(--accent);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.9); z-index: 99999; min-width: 220px; border-radius: 6px; overflow: hidden;
-        }
-        .ctx-item { padding: 12px 16px; cursor: pointer; font-size: 0.9rem; display: flex; gap: 12px; align-items: center; color: var(--text-main); transition: 0.1s; border-bottom: 1px solid #1a1a1a; }
-        .ctx-item:hover { background: var(--accent); color: #000; }
-        .ctx-divider { height: 1px; background: var(--border); margin: 0; }
-        .ctx-icon { width: 24px; text-align: center; }
-
-        /* --- UTILS --- */
-        .btn {
-            background: var(--accent); color: #000; border: none; padding: 8px 16px; border-radius: 6px;
-            cursor: pointer; font-weight: 700; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 8px;
-            transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px;
-        }
-        .btn:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-dim); }
-        .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
-        .btn-secondary:hover { border-color: var(--text-main); color: var(--text-main); background: var(--bg-panel-light); }
-        .btn-danger { background: rgba(255, 71, 87, 0.1); color: var(--danger); border: 1px solid var(--danger); }
-        .btn-danger:hover { background: var(--danger); color: white; }
-
+        /* CONTEXT MENU */
+        #ctx { position: fixed; display: none; background: var(--panel); border: 1px solid var(--accent); box-shadow: 0 5px 20px rgba(0,0,0,0.9); z-index: 99999; min-width: 200px; border-radius: 4px; }
+        .ctx-i { padding: 10px 15px; cursor: pointer; font-size: 0.85rem; display: flex; gap: 10px; align-items: center; color: var(--text); }
+        .ctx-i:hover { background: var(--accent); color: #000; }
+        .ctx-div { height: 1px; background: var(--border); margin: 2px 0; }
     </style>
 </head>
 <body>
 
-<div id="app-container">
-    <!-- HEADER -->
+<div id="app">
     <header>
-        <div class="brand">
-            <i class="fas fa-satellite-dish"></i> TITAN GRAPH <span>v12.0 ENT</span>
-        </div>
-        <div class="header-tools">
-            <button class="btn btn-secondary" onclick="App.undo()" title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
-            <button class="btn btn-secondary" onclick="App.redo()" title="Redo (Ctrl+Y)"><i class="fas fa-redo"></i></button>
-            <div style="width: 1px; background: var(--border); margin: 0 10px;"></div>
-            <button class="btn btn-secondary" onclick="IO.takeScreenshot()"><i class="fas fa-camera"></i> SNAP</button>
-            <button class="btn btn-secondary" onclick="IO.exportCSV()"><i class="fas fa-table"></i> CSV</button>
-            <button class="btn btn-secondary" onclick="IO.exportJSON()"><i class="fas fa-file-code"></i> JSON</button>
-            <button class="btn" onclick="document.getElementById('file-in').click()"><i class="fas fa-upload"></i> Import</button>
-            <input type="file" id="file-in" hidden onchange="IO.importJSON(this)">
+        <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v13</div>
+        <div class="tools">
+            <button class="btn btn-sec" onclick="App.undo()"><i class="fas fa-undo"></i></button>
+            <button class="btn btn-sec" onclick="App.redo()"><i class="fas fa-redo"></i></button>
+            <div style="width:1px; background:var(--border); margin:0 5px"></div>
+            <button class="btn btn-sec" onclick="IO.export()">JSON</button>
+            <button class="btn" onclick="document.getElementById('f-in').click()">Import</button>
+            <input type="file" id="f-in" hidden onchange="IO.import(this)">
         </div>
     </header>
 
-    <!-- TOOLBAR -->
     <div id="toolbar">
-        <div class="tool-btn active" id="mode-2d" onclick="Graph.setMode('2D')" data-tooltip="2D Canvas"><i class="fas fa-circle-nodes"></i></div>
-        <div class="tool-btn" id="mode-3d" onclick="Graph.setMode('3D')" data-tooltip="3D WebGL"><i class="fas fa-cube"></i></div>
-        <div class="separator"></div>
-        
-        <div class="tool-btn active" id="tool-select" onclick="Tools.set('select')" data-tooltip="Select / Move"><i class="fas fa-mouse-pointer"></i></div>
-        <div class="tool-btn" id="tool-link" onclick="Tools.set('link')" data-tooltip="Elastic Link (Drag)"><i class="fas fa-link"></i></div>
-        <div class="tool-btn" id="tool-draw" onclick="Tools.set('draw')" data-tooltip="Visual Pen"><i class="fas fa-pen-nib"></i></div>
-        <div class="tool-btn" onclick="Graph.addNodeManual()" data-tooltip="Add Entity"><i class="fas fa-plus"></i></div>
-        
-        <div class="separator"></div>
-        
-        <div class="tool-btn active" id="tool-physics" onclick="Graph.togglePhysics()" data-tooltip="Toggle Physics"><i class="fas fa-anchor"></i></div>
-        <div class="tool-btn" onclick="Graph.fit()" data-tooltip="Fit to Screen"><i class="fas fa-compress-arrows-alt"></i></div>
+        <div class="t-btn active" id="m-2d" onclick="Graph.setMode('2D')" title="2D Mode"><i class="fas fa-circle-nodes"></i></div>
+        <div class="t-btn" id="m-3d" onclick="Graph.setMode('3D')" title="3D Mode"><i class="fas fa-cube"></i></div>
+        <div style="width:20px; height:1px; background:var(--border)"></div>
+        <div class="t-btn active" id="t-move" onclick="Tools.set('move')" title="Move Tool"><i class="fas fa-mouse-pointer"></i></div>
+        <div class="t-btn" id="t-link" onclick="Tools.set('link')" title="Link Tool (Drag to Connect)"><i class="fas fa-link"></i></div>
+        <div class="t-btn" onclick="Graph.addManual()" title="Add Node"><i class="fas fa-plus"></i></div>
+        <div style="width:20px; height:1px; background:var(--border)"></div>
+        <div class="t-btn active" id="t-phys" onclick="Graph.togglePhysics()" title="Toggle Physics"><i class="fas fa-anchor"></i></div>
+        <div class="t-btn" onclick="Graph.fit()" title="Fit View"><i class="fas fa-compress"></i></div>
     </div>
 
-    <!-- VIEWPORT -->
     <div id="viewport">
         <div id="graph-canvas"></div>
-        
-        <div id="search-bar" class="overlay-panel">
-            <i class="fas fa-search" style="color: var(--text-muted)"></i>
-            <input type="text" id="search-input" placeholder="Search entities (Ctrl+K)..." oninput="Graph.search(this.value)">
+        <div id="search" class="overlay">
+            <i class="fas fa-search" style="color:var(--muted)"></i>
+            <input id="s-in" placeholder="Search (Ctrl+K)..." oninput="Graph.search(this.value)">
         </div>
-
-        <div id="analytics-overlay" class="overlay-panel">
-            <div class="stat-row"><span>Nodes</span> <span class="stat-val" id="stat-nodes">0</span></div>
-            <div class="stat-row"><span>Links</span> <span class="stat-val" id="stat-links">0</span></div>
-            <div class="stat-row"><span>Density</span> <span class="stat-val" id="stat-density">0.00</span></div>
-            <div style="margin-top:8px; border-top:1px solid #333; padding-top:5px;">
-                <span id="stat-sel" style="color:#fff; font-weight:bold;">No Selection</span>
-            </div>
+        <div id="stats" class="overlay">
+            <div>Nodes: <span id="st-n" style="color:var(--accent)">0</span></div>
+            <div>Links: <span id="st-l" style="color:var(--accent)">0</span></div>
+            <div style="margin-top:5px; border-top:1px solid #333; padding-top:5px; color:#fff" id="st-sel">None</div>
         </div>
-
-        <div id="zoom-controls">
-            <button class="mini-btn" onclick="Graph.zoom(1)"><i class="fas fa-plus"></i></button>
-            <button class="mini-btn" onclick="Graph.zoom(-1)"><i class="fas fa-minus"></i></button>
+        <div id="zoom">
+            <button class="z-btn" onclick="Graph.zoom(1)"><i class="fas fa-plus"></i></button>
+            <button class="z-btn" onclick="Graph.zoom(-1)"><i class="fas fa-minus"></i></button>
         </div>
     </div>
 
-    <!-- INSPECTOR -->
     <div id="inspector">
-        <div class="panel-header">
+        <div class="p-head">
             <span>Inspector</span>
-            <button class="btn btn-secondary" style="padding: 2px 6px;" onclick="UI.toggleInspector()"><i class="fas fa-times"></i></button>
+            <button class="btn btn-sec" style="padding:2px 6px" onclick="UI.toggleInsp()"><i class="fas fa-times"></i></button>
         </div>
-        <div class="panel-content" id="props-content">
-            <div style="padding: 40px; text-align: center; color: var(--text-muted);">
-                <i class="fas fa-microchip" style="font-size: 3rem; margin-bottom: 20px; opacity: 0.2;"></i><br>
-                Select an entity.
-            </div>
+        <div class="p-body" id="p-cont">
+            <div style="padding:40px; text-align:center; color:var(--muted)">Select an entity</div>
         </div>
     </div>
 
-    <!-- LOGS -->
-    <div id="log-panel">
-        <div class="log-toolbar" onclick="UI.toggleLogs()">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-terminal" style="color: var(--accent)"></i>
-                <span id="log-status">System Ready.</span>
-            </div>
-            <div style="display: flex; gap: 5px;">
-                <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.7rem;" onclick="event.stopPropagation(); Logger.copy()">COPY</button>
-                <button class="btn btn-secondary" style="padding: 2px 8px; font-size: 0.7rem;" onclick="event.stopPropagation(); Logger.clear()">CLEAR</button>
-                <i class="fas fa-chevron-down" id="log-toggle-icon"></i>
+    <div id="logs">
+        <div class="l-bar" onclick="UI.toggleLogs()">
+            <div style="display:flex; align-items:center; gap:10px"><i class="fas fa-terminal" style="color:var(--accent)"></i> <span id="l-stat">Ready.</span></div>
+            <div style="display:flex; gap:5px">
+                <button class="btn btn-sec" style="padding:2px 6px; font-size:0.7rem" onclick="event.stopPropagation(); Logger.copy()">COPY</button>
+                <button class="btn btn-sec" style="padding:2px 6px; font-size:0.7rem" onclick="event.stopPropagation(); Logger.clear()">CLEAR</button>
             </div>
         </div>
-        <div id="log-container"></div>
+        <div id="l-cont"></div>
     </div>
 </div>
 
-<!-- CONTEXT MENU -->
-<div id="ctx-menu">
-    <div class="ctx-item" onclick="Transforms.run('dns')"><span class="ctx-icon"><i class="fas fa-globe"></i></span> Resolve DNS</div>
-    <div class="ctx-item" onclick="Transforms.run('whois')"><span class="ctx-icon"><i class="fas fa-id-card"></i></span> WHOIS / RDAP</div>
-    <div class="ctx-item" onclick="Transforms.run('crt')"><span class="ctx-icon"><i class="fas fa-certificate"></i></span> Find Subdomains</div>
-    <div class="ctx-item" onclick="Transforms.run('geoip')"><span class="ctx-icon"><i class="fas fa-map-marker-alt"></i></span> GeoIP Lookup</div>
-    <div class="ctx-divider"></div>
-    <div class="ctx-item" onclick="Transforms.run('mac')"><span class="ctx-icon"><i class="fas fa-ethernet"></i></span> MAC Vendor</div>
-    <div class="ctx-item" onclick="Transforms.run('ua')"><span class="ctx-icon"><i class="fas fa-desktop"></i></span> Parse User-Agent</div>
-    <div class="ctx-divider"></div>
-    <div class="ctx-item" onclick="Graph.deleteSelected()"><span class="ctx-icon"><i class="fas fa-trash" style="color: var(--danger)"></i></span> Delete Entity</div>
+<div id="ctx">
+    <div class="ctx-i" onclick="Transforms.run('dns')"><i class="fas fa-globe"></i> Resolve DNS</div>
+    <div class="ctx-i" onclick="Transforms.run('whois')"><i class="fas fa-id-card"></i> WHOIS</div>
+    <div class="ctx-i" onclick="Transforms.run('geoip')"><i class="fas fa-map-marker-alt"></i> GeoIP</div>
+    <div class="ctx-div"></div>
+    <div class="ctx-i" onclick="Graph.delSel()"><i class="fas fa-trash" style="color:var(--danger)"></i> Delete</div>
 </div>
 
 <script>
 /**
- * TITAN GRAPH v12: ENTERPRISE EDITION
- * Features:
- * - Triple Linking Modes (Elastic, Rim, Draw)
- * - Robust OSINT Transforms
- * - Full UI Suite (JSON, CSV, Snapshots)
- * - Stable Physics
+ * TITAN GRAPH v13
+ * Robust Core Edition
  */
 
-// --- 1. CONFIGURATION ---
 const Config = {
-    colors: {
-        domain: '#00f2ff', ip: '#00ff9d', person: '#ffcc00',
-        location: '#ff00ff', asn: '#aa00ff', default: '#8395a7'
-    },
-    icons: {
-        domain: '\uf0ac', ip: '\uf233', person: '\uf007',
-        location: '\uf3c5', asn: '\uf19c', default: '\uf128'
-    }
+    colors: { domain: '#00f2ff', ip: '#00ff9d', person: '#ffcc00', location: '#ff00ff', default: '#8395a7' },
+    icons: { domain: '\uf0ac', ip: '\uf233', person: '\uf007', location: '\uf3c5', default: '\uf128' }
 };
 
 const Utils = {
-    uuid: () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-        const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    }),
-    copy: (obj) => JSON.parse(JSON.stringify(obj)),
-    download: (content, name, type) => {
-        const blob = new Blob([content], {type});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = name;
-        a.click();
-    }
+    uuid: () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random()*16|0, v = c=='x'?r:(r&0x3|0x8); return v.toString(16); }),
+    copy: o => JSON.parse(JSON.stringify(o))
 };
 
-// --- 2. STATE MANAGER ---
+// --- STATE ---
 const Store = {
     state: { nodes: [], links: [] },
-    history: [], historyIndex: -1,
+    history: [], hIdx: -1,
 
     init() {
-        const saved = localStorage.getItem('titan_v12');
-        if (saved) {
-            try { this.state = JSON.parse(saved); Logger.log("Session restored.", "success"); } 
-            catch(e) { this.reset(); }
-        } else { this.reset(); }
-        this.saveState();
+        const s = localStorage.getItem('titan_v13');
+        if(s) { try { this.state = JSON.parse(s); Logger.log("Session restored.", "suc"); } catch(e){ this.reset(); } } 
+        else this.reset();
+        this.save();
     },
-
-    reset() {
-        this.state = { nodes: [{ id: Utils.uuid(), label: 'Start', type: 'default', x:0, y:0, val:1 }], links: [] };
-        Logger.log("New session started.", "info");
-    },
-
-    saveState() {
-        if (this.historyIndex < this.history.length - 1) this.history = this.history.slice(0, this.historyIndex + 1);
+    reset() { this.state = { nodes: [{id:Utils.uuid(), label:'Start', type:'default', x:0, y:0, val:1}], links:[] }; },
+    
+    save() {
+        if(this.hIdx < this.history.length-1) this.history = this.history.slice(0, this.hIdx+1);
         this.history.push(Utils.copy(this.state));
-        if (this.history.length > 50) this.history.shift(); else this.historyIndex++;
-        localStorage.setItem('titan_v12', JSON.stringify(this.state));
-        UI.updateStats();
+        if(this.history.length>50) this.history.shift(); else this.hIdx++;
+        localStorage.setItem('titan_v13', JSON.stringify(this.state));
+        UI.stats();
     },
+    undo() { if(this.hIdx>0) { this.hIdx--; this.state = Utils.copy(this.history[this.hIdx]); Graph.refresh(); Logger.log("Undo"); } },
+    redo() { if(this.hIdx<this.history.length-1) { this.hIdx++; this.state = Utils.copy(this.history[this.hIdx]); Graph.refresh(); Logger.log("Redo"); } },
 
-    undo() {
-        if (this.historyIndex > 0) {
-            this.historyIndex--;
-            this.state = Utils.copy(this.history[this.historyIndex]);
+    addNode(d) {
+        const n = { id:Utils.uuid(), label:d.label, type:d.type||'default', val:1, meta:d.meta||{}, x:d.x||0, y:d.y||0 };
+        this.state.nodes.push(n);
+        this.save();
+        return n;
+    },
+    addLink(s, t) {
+        if(s===t) return;
+        const ex = this.state.links.find(l => (l.source.id===s && l.target.id===t) || (l.source===s && l.target===t));
+        if(!ex) {
+            this.state.links.push({source:s, target:t});
+            this.save();
             Graph.refresh();
-            Logger.log("Undo performed.", "info");
         }
     },
-
-    redo() {
-        if (this.historyIndex < this.history.length - 1) {
-            this.historyIndex++;
-            this.state = Utils.copy(this.history[this.historyIndex]);
-            Graph.refresh();
-            Logger.log("Redo performed.", "info");
-        }
-    },
-
-    addNode(data) {
-        const existing = this.state.nodes.find(n => n.label === data.label && n.type === data.type);
-        if (existing) return existing;
-        const node = {
-            id: Utils.uuid(), label: data.label, type: data.type || 'default',
-            val: 1, meta: data.meta || {}, notes: "", x: data.x || 0, y: data.y || 0, z: 0
-        };
-        this.state.nodes.push(node);
-        this.saveState();
-        return node;
-    },
-
-    addLink(sourceId, targetId, type = 'semantic') {
-        if (sourceId === targetId) return;
-        const exists = this.state.links.find(l => 
-            (l.source.id === sourceId && l.target.id === targetId) || (l.source === sourceId && l.target === targetId)
-        );
-        if (!exists) {
-            this.state.links.push({ source: sourceId, target: targetId, type: type });
-            this.saveState();
-        }
-    },
-
-    updateNode(id, updates) {
-        const node = this.state.nodes.find(n => n.id === id);
-        if (node) { Object.assign(node, updates); this.saveState(); Graph.refresh(); }
-    },
-
-    deleteNode(id) {
-        this.state.nodes = this.state.nodes.filter(n => n.id !== id);
-        this.state.links = this.state.links.filter(l => l.source.id !== id && l.target.id !== id && l.source !== id && l.target !== id);
-        this.saveState(); Graph.refresh();
+    updateNode(id, up) { const n = this.state.nodes.find(x=>x.id===id); if(n) { Object.assign(n, up); this.save(); Graph.refresh(); } },
+    delNode(id) {
+        this.state.nodes = this.state.nodes.filter(n=>n.id!==id);
+        this.state.links = this.state.links.filter(l=>l.source.id!==id && l.target.id!==id && l.source!==id && l.target!==id);
+        this.save(); Graph.refresh();
     }
 };
 
-// --- 3. GRAPH ENGINE ---
+// --- GRAPH ---
 const Graph = {
-    instance: null,
-    mode: '2D',
-    selected: null,
-    physics: true,
-    hoverNode: null,
-    dragOrigin: null,
-    wireStartNode: null, // For Rim Linking
-    mousePos: {x:0, y:0},
+    instance: null, mode: '2D', selected: null, physics: true,
+    hoverNode: null, dragOrigin: null,
 
     init() {
         this.render();
-        window.addEventListener('resize', () => {
-            if (this.instance) {
-                const el = document.getElementById('graph-canvas');
-                this.instance.width(el.clientWidth).height(el.clientHeight);
-            }
-        });
-        document.addEventListener('click', () => document.getElementById('ctx-menu').style.display = 'none');
-        
-        // Track mouse for drawing lines
-        const el = document.getElementById('graph-canvas');
-        el.addEventListener('mousemove', e => {
-            const rect = el.getBoundingClientRect();
-            // Store raw mouse pos relative to canvas
-            this.mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-        });
+        window.onresize = () => { if(this.instance) this.instance.width(document.getElementById('graph-canvas').clientWidth).height(document.getElementById('graph-canvas').clientHeight); };
+        document.onclick = () => document.getElementById('ctx').style.display='none';
     },
 
-    setMode(mode) {
-        if (this.mode === mode) return;
-        this.mode = mode;
-        document.getElementById('mode-2d').classList.toggle('active', mode === '2D');
-        document.getElementById('mode-3d').classList.toggle('active', mode === '3D');
-        
-        const el = document.getElementById('graph-canvas');
-        el.innerHTML = ''; 
+    setMode(m) {
+        if(this.mode===m) return;
+        this.mode = m;
+        document.getElementById('m-2d').classList.toggle('active', m==='2D');
+        document.getElementById('m-3d').classList.toggle('active', m==='3D');
+        document.getElementById('graph-canvas').innerHTML = '';
         this.instance = null;
-        
-        setTimeout(() => this.render(), 100);
-        Logger.log(`Switched to ${mode} mode.`, "info");
+        setTimeout(() => this.render(), 50);
     },
 
     togglePhysics() {
         this.physics = !this.physics;
-        document.getElementById('tool-physics').classList.toggle('active', this.physics);
-        if (!this.physics) {
-            Store.state.nodes.forEach(n => { n.fx = null; n.fy = null; n.fz = null; });
-            if (this.instance) this.instance.d3ReheatSimulation();
-            Logger.log("Physics: Flow State", "info");
+        document.getElementById('t-phys').classList.toggle('active', this.physics);
+        if(!this.physics) {
+            Store.state.nodes.forEach(n => { n.fx = null; n.fy = null; });
+            if(this.instance) this.instance.d3ReheatSimulation();
+            Logger.log("Physics: Flow");
         } else {
-            Logger.log("Physics: Steadfast Mode", "info");
+            Logger.log("Physics: Steadfast");
         }
     },
 
     render() {
         const el = document.getElementById('graph-canvas');
-        const w = el.clientWidth;
-        const h = el.clientHeight;
+        const w = el.clientWidth, h = el.clientHeight;
 
-        if (this.mode === '2D') {
+        if(this.mode === '2D') {
             this.instance = ForceGraph()(el)
-                .width(w).height(h)
-                .backgroundColor('#000')
+                .width(w).height(h).backgroundColor('#000')
                 .graphData(Store.state)
                 .nodeLabel('label')
                 .nodeColor(n => Config.colors[n.type] || Config.colors.default)
-                .linkColor(l => l.type === 'visual' ? '#555' : '#333')
-                .linkLineDash(l => l.type === 'visual' ? [4, 2] : null)
-                .linkWidth(2)
-                .linkDirectionalArrowLength(4)
-                .linkDirectionalArrowRelPos(1)
-                .d3AlphaDecay(0.02)
-                .onNodeHover(node => {
-                    this.hoverNode = node;
-                    el.style.cursor = node ? 'pointer' : (Tools.current === 'link' || Tools.current === 'draw' ? 'crosshair' : 'default');
-                })
-                .nodeCanvasObject((node, ctx, globalScale) => {
-                    const label = node.label;
-                    const fontSize = 12/globalScale;
+                .linkColor(() => '#333')
+                .linkWidth(2).linkDirectionalArrowLength(4).linkDirectionalArrowRelPos(1)
+                .d3AlphaDecay(0.05) // Reduce jitter
+                .d3VelocityDecay(0.4) // Increase friction
+                .onNodeHover(n => { this.hoverNode = n; el.style.cursor = n ? 'pointer' : (Tools.cur==='link'?'crosshair':'default'); })
+                .nodeCanvasObject((n, ctx, k) => {
                     const r = 6;
-                    
-                    // 1. Selection Halo
-                    if (node === this.selected) {
-                        ctx.beginPath(); ctx.arc(node.x, node.y, r * 1.8, 0, 2 * Math.PI);
-                        ctx.fillStyle = 'rgba(0, 242, 255, 0.4)'; ctx.fill();
+                    if(n===this.selected) { ctx.beginPath(); ctx.arc(n.x, n.y, r*1.8, 0, 2*Math.PI); ctx.fillStyle='rgba(0,242,255,0.3)'; ctx.fill(); }
+                    if(Tools.cur==='link' && this.hoverNode===n && this.dragOrigin && this.dragOrigin.id !== n.id) {
+                        ctx.beginPath(); ctx.arc(n.x, n.y, r*2.5, 0, 2*Math.PI); ctx.strokeStyle='#00f2ff'; ctx.lineWidth=2/k; ctx.stroke();
                     }
-
-                    // 2. Rim (The "Thingie") - Always visible slightly
-                    ctx.beginPath(); ctx.arc(node.x, node.y, r + 4, 0, 2 * Math.PI);
-                    ctx.strokeStyle = (node === this.hoverNode) ? '#00f2ff' : 'rgba(0, 242, 255, 0.2)';
-                    ctx.lineWidth = 1/globalScale; ctx.stroke();
-
-                    // 3. Target Glow (Link Mode)
-                    if ((Tools.current === 'link' || this.wireStartNode) && this.hoverNode === node && this.wireStartNode !== node) {
-                        ctx.beginPath(); ctx.arc(node.x, node.y, r * 2.5, 0, 2 * Math.PI);
-                        ctx.strokeStyle = '#ffff00'; ctx.lineWidth = 2/globalScale; ctx.stroke();
-                    }
-
-                    // 4. Node Body
-                    ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
-                    ctx.fillStyle = Config.colors[node.type] || Config.colors.default; ctx.fill();
-
-                    // 5. Icon
-                    const icon = Config.icons[node.type] || Config.icons.default;
-                    ctx.font = `${4}px "Font Awesome 6 Free"`; ctx.fillStyle = '#000';
-                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(icon, node.x, node.y);
-
-                    // 6. Label
-                    ctx.font = `${fontSize}px monospace`; ctx.fillStyle = '#e0e6ed';
-                    ctx.fillText(label, node.x, node.y + r + fontSize);
+                    ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 2*Math.PI); ctx.fillStyle=Config.colors[n.type]||'#888'; ctx.fill();
+                    ctx.font=`${4}px "Font Awesome 6 Free"`; ctx.fillStyle='#000'; ctx.textAlign='center'; ctx.textBaseline='middle'; 
+                    ctx.fillText(Config.icons[n.type]||'?', n.x, n.y);
+                    ctx.font=`${12/k}px monospace`; ctx.fillStyle='#eee'; ctx.fillText(n.label, n.x, n.y+r+(12/k));
                 })
                 .onNodeDragStart(node => {
                     this.dragOrigin = { id: node.id, x: node.x, y: node.y, fx: node.fx, fy: node.fy };
                 })
                 .onNodeDragEnd(node => {
-                    if (this.physics) { node.fx = node.x; node.fy = node.y; }
-                    
-                    // Elastic Link Logic
-                    if ((Tools.current === 'link' || Tools.current === 'draw') && this.hoverNode && this.hoverNode !== node) {
-                        const type = Tools.current === 'draw' ? 'visual' : 'semantic';
-                        Store.addLink(node.id, this.hoverNode.id, type);
-                        Logger.log(`Linked ${node.label} -> ${this.hoverNode.label}`, "success");
-                    }
-
-                    // Snap Back if Linking
-                    if (Tools.current === 'link' || Tools.current === 'draw') {
+                    if (Tools.cur === 'link') {
+                        if (this.hoverNode && this.hoverNode.id !== node.id) {
+                            Store.addLink(node.id, this.hoverNode.id);
+                            Logger.log(`Linked ${node.label} -> ${this.hoverNode.label}`, "suc");
+                        }
+                        // Snap back
                         node.x = this.dragOrigin.x; node.y = this.dragOrigin.y;
                         node.fx = this.dragOrigin.fx; node.fy = this.dragOrigin.fy;
+                    } else {
+                        if (this.physics) { node.fx = node.x; node.fy = node.y; }
                     }
                     this.dragOrigin = null;
                 })
-                .onRenderFramePost((ctx, globalScale) => {
-                    // Draw Wire (Rim Link)
-                    if (this.wireStartNode) {
-                        const start = this.wireStartNode;
-                        // We need to map mouse screen coords to graph coords
-                        const mouseGraph = this.instance.screen2GraphCoords(this.mousePos.x, this.mousePos.y);
-                        
-                        ctx.beginPath();
-                        ctx.moveTo(start.x, start.y);
-                        ctx.lineTo(mouseGraph.x, mouseGraph.y);
-                        ctx.strokeStyle = '#00f2ff';
-                        ctx.lineWidth = 2 / globalScale;
-                        ctx.setLineDash([4, 2]);
-                        ctx.stroke();
-                        ctx.setLineDash([]);
-                    }
-                    
-                    // Draw Elastic Drag Line
-                    if ((Tools.current === 'link' || Tools.current === 'draw') && this.dragOrigin) {
+                .onRenderFramePost((ctx, k) => {
+                    if (Tools.cur === 'link' && this.dragOrigin) {
                         const n = Store.state.nodes.find(x => x.id === this.dragOrigin.id);
                         if(n) {
-                            ctx.beginPath();
-                            ctx.moveTo(this.dragOrigin.x, this.dragOrigin.y);
-                            ctx.lineTo(n.x, n.y);
-                            ctx.strokeStyle = '#ffff00';
-                            ctx.lineWidth = 2/globalScale;
-                            ctx.setLineDash([4, 2]);
-                            ctx.stroke();
-                            ctx.setLineDash([]);
+                            ctx.beginPath(); ctx.moveTo(this.dragOrigin.x, this.dragOrigin.y); ctx.lineTo(n.x, n.y);
+                            ctx.strokeStyle = '#ffff00'; ctx.lineWidth = 2/k; ctx.setLineDash([4, 2]); ctx.stroke(); ctx.setLineDash([]);
                         }
                     }
                 })
-                .onNodeClick((node, event) => {
-                    // RIM LINKING LOGIC
-                    // If we are already wiring, finish it
-                    if (this.wireStartNode) {
-                        if (node !== this.wireStartNode) {
-                            Store.addLink(this.wireStartNode.id, node.id);
-                            Logger.log("Rim Link Created.", "success");
-                        }
-                        this.wireStartNode = null;
-                        return;
-                    }
-
-                    // Check if click was on the "Rim" (approximate by checking if node is already selected)
-                    // If node is selected, clicking again starts wiring
-                    if (this.selected === node) {
-                        this.wireStartNode = node;
-                        Logger.log("Wire Mode Active. Click target node.", "info");
-                        return;
-                    }
-
-                    this.onClick(node);
+                .onNodeClick(n => { this.selected = n; UI.insp(n); })
+                .onNodeRightClick((n, e) => {
+                    this.selected = n; UI.insp(n);
+                    const m = document.getElementById('ctx');
+                    m.style.left = e.clientX+'px'; m.style.top = e.clientY+'px'; m.style.display='block';
                 })
-                .onNodeRightClick(this.onRightClick.bind(this))
-                .onBackgroundClick(() => {
-                    if (this.wireStartNode) {
-                        this.wireStartNode = null;
-                        Logger.log("Wiring cancelled.", "info");
-                    } else {
-                        this.deselect();
-                    }
-                });
+                .onBackgroundClick(() => { this.selected = null; UI.clear(); });
+
         } else {
-            // 3D MODE
+            // 3D
             this.instance = ForceGraph3D()(el)
-                .width(w).height(h)
-                .backgroundColor('#000')
+                .width(w).height(h).backgroundColor('#000')
                 .graphData(Store.state)
-                .nodeColor(n => Config.colors[n.type] || Config.colors.default)
-                .linkWidth(1)
-                .linkColor(() => '#555')
-                .nodeThreeObject(node => {
-                    const sprite = new SpriteText(node.label);
-                    sprite.color = node === this.selected ? Config.colors.domain : '#e0e6ed';
-                    sprite.textHeight = 8;
-                    return sprite;
+                .nodeColor(n => Config.colors[n.type] || '#888')
+                .nodeThreeObject(n => {
+                    const s = new SpriteText(n.label); s.color = n===this.selected?'#00f2ff':'#eee'; s.textHeight=8; return s;
                 })
-                .nodeThreeObjectExtend(true)
-                .onNodeClick(this.onClick.bind(this))
-                .onNodeRightClick(this.onRightClick.bind(this))
-                .onBackgroundClick(this.deselect.bind(this))
-                .onNodeDragEnd(node => {
-                    if (this.physics) { node.fx = node.x; node.fy = node.y; node.fz = node.z; }
-                });
+                .onNodeClick(n => { this.selected = n; UI.insp(n); })
+                .onNodeRightClick((n, e) => {
+                    this.selected = n; UI.insp(n);
+                })
+                .onNodeDragEnd(n => { if(this.physics){ n.fx=n.x; n.fy=n.y; n.fz=n.z; } });
         }
     },
 
-    refresh() {
-        const data = { nodes: Store.state.nodes.map(n => ({...n})), links: Store.state.links.map(l => ({...l})) };
-        this.instance.graphData(data);
+    refresh() { 
+        const data = { nodes: Store.state.nodes.map(n=>({...n})), links: Store.state.links.map(l=>({...l})) };
+        this.instance.graphData(data); 
     },
 
-    onClick(node) {
-        this.selected = node;
-        UI.renderInspector(node);
-    },
-
-    onRightClick(node, e) {
-        e.preventDefault(); // Critical fix
-        this.selected = node;
-        UI.renderInspector(node);
-        const menu = document.getElementById('ctx-menu');
-        menu.style.left = `${e.clientX}px`;
-        menu.style.top = `${e.clientY}px`;
-        menu.style.display = 'block';
-    },
-
-    deselect() {
-        this.selected = null;
-        this.wireStartNode = null;
-        UI.clearInspector();
-        this.refresh();
-    },
-
-    addNodeManual() {
-        const label = prompt("Entity Name:");
-        if (label) { 
-            // Failsafe center calc
+    addManual() {
+        const l = prompt("Label:");
+        if(l) {
+            // Failsafe: Add at 0,0 if calculation fails
             let x=0, y=0;
-            if(this.instance && this.mode === '2D') {
+            if(this.instance && this.mode==='2D') {
                 try {
                     const c = this.instance.screen2GraphCoords(this.instance.width()/2, this.instance.height()/2);
-                    x = c.x; y = c.y;
+                    if(c) { x = c.x; y = c.y; }
                 } catch(e) {}
             }
-            Store.addNode({ label, type: 'default', x, y }); 
-            this.refresh(); 
-            Logger.log(`Added node: ${label}`, "success"); 
-        }
-    },
-
-    deleteSelected() {
-        if (this.selected) { Store.deleteNode(this.selected.id); this.deselect(); }
-    },
-
-    search(query) {
-        if (!query) return;
-        const node = Store.state.nodes.find(n => n.label.toLowerCase().includes(query.toLowerCase()));
-        if (node) {
-            this.selected = node;
-            UI.renderInspector(node);
-            if(this.mode === '2D') {
-                this.instance.centerAt(node.x, node.y, 1000);
-                this.instance.zoom(6, 2000);
-            } else {
-                const distRatio = 1 + 50/Math.hypot(node.x, node.y, node.z);
-                this.instance.cameraPosition({ x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, node, 2000);
-            }
-        }
-    },
-
-    fit() { this.instance.zoomToFit(400, 200); },
-
-    zoom(dir) {
-        if (this.mode === '2D') {
-            const k = this.instance.zoom();
-            this.instance.zoom(k + dir * 0.5, 400);
-        } else {
-            const pos = this.instance.cameraPosition();
-            this.instance.cameraPosition({ x: pos.x, y: pos.y, z: pos.z + (dir * -100) }, null, 400);
-        }
-    }
-};
-
-// --- 4. TOOLS ---
-const Tools = {
-    current: 'select',
-    set(tool) {
-        this.current = tool;
-        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(`tool-${tool}`).classList.add('active');
-        
-        const el = document.getElementById('graph-canvas');
-        if (tool === 'link') {
-            el.style.cursor = 'crosshair';
-            Logger.log("Link Mode: Drag node to node.", "info");
-        } else if (tool === 'draw') {
-            el.style.cursor = 'crosshair';
-            Logger.log("Draw Mode: Drag to create visual line.", "info");
-        } else {
-            el.style.cursor = 'default';
-            Logger.log("Select Mode active.", "info");
-        }
-    }
-};
-
-// --- 5. TRANSFORMS ---
-const Transforms = {
-    async fetch(url) {
-        const proxies = ['https://api.allorigins.win/raw?url=', 'https://corsproxy.io/?', ''];
-        for (const p of proxies) {
-            try {
-                const res = await fetch(p ? p + encodeURIComponent(url) : url);
-                if (res.ok) return await res.json();
-            } catch (e) {}
-        }
-        throw new Error("Connection failed.");
-    },
-
-    async run(type) {
-        const node = Graph.selected;
-        if (!node) return;
-        document.getElementById('ctx-menu').style.display = 'none';
-        Logger.log(`Running ${type.toUpperCase()}...`, "info");
-
-        try {
-            if (type === 'dns') {
-                const data = await this.fetch(`https://dns.google/resolve?name=${node.label}&type=A`);
-                if (data.Answer) {
-                    let c = 0;
-                    data.Answer.forEach(r => {
-                        if (r.type === 1) {
-                            const newNode = Store.addNode({ label: r.data, type: 'ip', x: node.x+20, y: node.y+20 });
-                            Store.addLink(node.id, newNode.id);
-                            c++;
-                        }
-                    });
-                    node.meta = { ...node.meta, dns: data.Answer };
-                    Logger.log(`Resolved ${c} IPs.`, "success");
-                } else throw new Error("No A records.");
-            } 
-            else if (type === 'whois') {
-                const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(node.label);
-                const url = isIp ? `https://rdap.arin.net/registry/ip/${node.label}` : `https://rdap.org/domain/${node.label}`;
-                const data = await this.fetch(url);
-                node.meta = { ...node.meta, whois: data };
-                if (data.entities) {
-                    data.entities.forEach(e => {
-                        let name = e.handle;
-                        if(e.vcardArray) { const fn = e.vcardArray[1].find(x=>x[0]==='fn'); if(fn) name=fn[3]; }
-                        if(name) {
-                            const n = Store.addNode({ label: name, type: 'person', x: node.x+30, y: node.y+30 });
-                            Store.addLink(node.id, n.id);
-                        }
-                    });
-                }
-                Logger.log("WHOIS data retrieved.", "success");
-            }
-            else if (type === 'crt') {
-                const data = await this.fetch(`https://crt.sh/?q=%.${node.label}&output=json`);
-                const unique = [...new Set(data.map(d => d.name_value))].slice(0, 10);
-                unique.forEach(sub => {
-                    const n = Store.addNode({ label: sub, type: 'domain', x: node.x+40, y: node.y+40 });
-                    Store.addLink(node.id, n.id);
-                });
-                Logger.log(`Found ${unique.length} subdomains.`, "success");
-            }
-            else if (type === 'geoip') {
-                const data = await this.fetch(`https://ipapi.co/${node.label}/json/`);
-                if(data.city) {
-                    const loc = Store.addNode({ label: `${data.city}, ${data.country_code}`, type: 'location', x: node.x, y: node.y+50 });
-                    Store.addLink(node.id, loc.id);
-                    node.meta = { ...node.meta, geoip: data };
-                    Logger.log("GeoIP location found.", "success");
-                }
-            }
-            else if (type === 'mac') {
-                // Mock
-                node.meta.mac = "Vendor: Cisco Systems";
-                Logger.log("MAC Vendor Identified.", "success");
-            }
-            else if (type === 'ua') {
-                // Mock
-                node.meta.ua = "Chrome / Windows 10";
-                Logger.log("User-Agent Parsed.", "success");
-            }
-            UI.renderInspector(node);
+            Store.addNode({label:l, x:x, y:y});
             Graph.refresh();
-        } catch (e) { Logger.log(e.message, "error"); }
-    }
-};
-
-// --- 6. UI MANAGER ---
-const UI = {
-    renderInspector(node) {
-        const container = document.getElementById('props-content');
-        const metaJson = node.meta && Object.keys(node.meta).length > 0 
-            ? JSON.stringify(node.meta, null, 2) 
-            : "No enriched data.";
-
-        container.innerHTML = `
-            <div class="prop-section">
-                <div class="form-group">
-                    <label class="form-label">LABEL</label>
-                    <input class="form-input" value="${node.label}" onchange="Store.updateNode('${node.id}', {label: this.value})">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">TYPE</label>
-                    <select class="form-input" onchange="Store.updateNode('${node.id}', {type: this.value})">
-                        ${Object.keys(Config.colors).map(k => `<option value="${k}" ${node.type === k ? 'selected' : ''}>${k.toUpperCase()}</option>`).join('')}
-                    </select>
-                </div>
-            </div>
-            <div class="prop-section">
-                <div class="prop-title">RAW DATA (JSON)</div>
-                <div class="json-pre">${metaJson}</div>
-            </div>
-            <div class="prop-section">
-                <button class="btn btn-danger" style="width: 100%" onclick="Graph.deleteSelected()">DELETE ENTITY</button>
-            </div>
-        `;
-        document.getElementById('stat-sel').innerText = node.label;
-        document.body.classList.remove('inspector-closed');
-    },
-
-    clearInspector() {
-        document.getElementById('props-content').innerHTML = '<div style="padding:40px; text-align:center; color:#666;">Select an entity.</div>';
-        document.getElementById('stat-sel').innerText = "No Selection";
-    },
-
-    toggleInspector() { document.body.classList.toggle('inspector-closed'); },
-    toggleLogs() { 
-        document.body.classList.toggle('log-minimized'); 
-        const icon = document.getElementById('log-toggle-icon');
-        icon.className = document.body.classList.contains('log-minimized') ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
-    },
-
-    updateStats() {
-        const nodes = Store.state.nodes.length;
-        const links = Store.state.links.length;
-        document.getElementById('stat-nodes').innerText = nodes;
-        document.getElementById('stat-links').innerText = links;
-        const density = nodes > 1 ? (2 * links) / (nodes * (nodes - 1)) : 0;
-        document.getElementById('stat-density').innerText = density.toFixed(4);
-    }
-};
-
-// --- 7. IO MANAGER ---
-const IO = {
-    exportJSON() { Utils.download(JSON.stringify(Store.state, null, 2), `titan_${Date.now()}.json`, 'application/json'); },
-    exportCSV() {
-        let csv = "ID,Label,Type\n";
-        Store.state.nodes.forEach(n => csv += `"${n.id}","${n.label}","${n.type}"\n`);
-        Utils.download(csv, `titan_${Date.now()}.csv`, 'text/csv');
-    },
-    importJSON(input) {
-        const file = input.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try { Store.state = JSON.parse(e.target.result); Store.saveState(); Graph.refresh(); Logger.log("Imported.", "success"); } 
-            catch (err) { Logger.log("Import failed.", "error"); }
-        };
-        reader.readAsText(file);
-    },
-    takeScreenshot() {
-        const canvas = document.querySelector('canvas');
-        if(canvas) {
-            const link = document.createElement('a');
-            link.download = `titan_snap_${Date.now()}.png`;
-            link.href = canvas.toDataURL();
-            link.click();
-            Logger.log("Screenshot saved.", "success");
+            Logger.log(`Added: ${l}`, "suc");
         }
+    },
+    delSel() { if(this.selected) { Store.delNode(this.selected.id); this.selected=null; UI.clear(); } },
+    search(q) {
+        if(!q) return;
+        const n = Store.state.nodes.find(x=>x.label.toLowerCase().includes(q.toLowerCase()));
+        if(n) {
+            this.selected = n; UI.insp(n);
+            if(this.mode==='2D') { this.instance.centerAt(n.x, n.y, 1000); this.instance.zoom(6, 2000); }
+        }
+    },
+    fit() { this.instance.zoomToFit(400, 100); },
+    zoom(d) {
+        if(this.mode==='2D') this.instance.zoom(this.instance.zoom() + d*0.5, 400);
     }
 };
 
-// --- BOOTSTRAP ---
-const App = { undo: () => Store.undo(), redo: () => Store.redo() };
-
-window.onload = () => {
-    Store.init();
-    Graph.init();
-    
-    document.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key === 'z') { e.preventDefault(); App.undo(); }
-        if (e.ctrlKey && e.key === 'y') { e.preventDefault(); App.redo(); }
-        if (e.ctrlKey && e.key === 'k') { e.preventDefault(); document.getElementById('search-input').focus(); }
-        if (e.key === 'Delete') Graph.deleteSelected();
-    });
-
-    Logger.log("TitanGraph v12 Enterprise Online.", "success");
+// --- TOOLS ---
+const Tools = {
+    cur: 'move',
+    set(t) {
+        this.cur = t;
+        document.getElementById('t-move').classList.toggle('active', t==='move');
+        document.getElementById('t-link').classList.toggle('active', t==='link');
+        Logger.log(t==='link' ? "Link Mode: Drag node to target." : "Move Mode.");
+    }
 };
 
+// --- TRANSFORMS ---
+const Transforms = {
+    async fetch(u) {
+        const p = ['https://api.allorigins.win/raw?url=', 'https://corsproxy.io/?', ''];
+        for(const x of p) { try { const r = await fetch(x?x+encodeURIComponent(u):u); if(r.ok) return await r.json(); } catch(e){} }
+        throw new Error("Conn Fail");
+    },
+    async run(t) {
+        const n = Graph.selected; if(!n) return;
+        document.getElementById('ctx').style.display='none';
+        Logger.log(`Running ${t}...`);
+        try {
+            if(t==='dns') {
+                const d = await this.fetch(`https://dns.google/resolve?name=${n.label}&type=A`);
+                if(d.Answer) {
+                    d.Answer.forEach(r => { if(r.type===1) { const ip = Store.addNode({label:r.data, type:'ip', x:n.x+20, y:n.y+20}); Store.addLink(n.id, ip.id); } });
+                    n.meta = {...n.meta, dns:d.Answer}; Logger.log("DNS Resolved", "suc");
+                }
+            } else if(t==='whois') {
+                const u = /^\d/.test(n.label) ? `https://rdap.arin.net/registry/ip/${n.label}` : `https://rdap.org/domain/${n.label}`;
+                const d = await this.fetch(u);
+                n.meta = {...n.meta, whois:d}; Logger.log("WHOIS Done", "suc");
+            } else if(t==='geoip') {
+                const d = await this.fetch(`https://ipapi.co/${n.label}/json/`);
+                if(d.city) { Store.addLink(n.id, Store.addNode({label:`${d.city}, ${d.country_code}`, type:'location', x:n.x, y:n.y+40}).id); n.meta={...n.meta, geoip:d}; Logger.log("GeoIP Done", "suc"); }
+            }
+            UI.insp(n);
+        } catch(e) { Logger.log(e.message, "err"); }
+    }
+};
+
+// --- UI ---
+const UI = {
+    insp(n) {
+        const c = document.getElementById('p-cont');
+        const json = n.meta ? JSON.stringify(n.meta, null, 2) : "";
+        c.innerHTML = `
+            <div class="p-sec">
+                <div class="form-row"><label>LABEL</label><input value="${n.label}" onchange="Store.updateNode('${n.id}', {label:this.value})"></div>
+                <div class="form-row"><label>TYPE</label><select onchange="Store.updateNode('${n.id}', {type:this.value})">${Object.keys(Config.colors).map(k=>`<option value="${k}" ${n.type===k?'selected':''}>${k}</option>`).join('')}</select></div>
+            </div>
+            <div class="p-sec"><div class="form-row"><label>RAW DATA</label><div class="json-box">${json}</div></div></div>
+            <div class="p-sec"><button class="btn" style="background:var(--danger); width:100%" onclick="Graph.delSel()">DELETE</button></div>
+        `;
+        document.getElementById('st-sel').innerText = n.label;
+        document.body.classList.remove('insp-closed');
+    },
+    clear() { document.getElementById('p-cont').innerHTML='<div style="padding:40px;text-align:center;color:#666">Select entity</div>'; document.getElementById('st-sel').innerText='None'; },
+    toggleInsp() { document.body.classList.toggle('insp-closed'); },
+    toggleLogs() { document.body.classList.toggle('log-min'); },
+    stats() { document.getElementById('st-n').innerText=Store.state.nodes.length; document.getElementById('st-l').innerText=Store.state.links.length; }
+};
+
+const Logger = {
+    log(m, t='inf') {
+        const c = document.getElementById('l-cont');
+        const d = document.createElement('div'); d.className='l-ent';
+        d.innerHTML = `<span class="l-ts">[${new Date().toLocaleTimeString()}]</span><span class="l-${t}">${m}</span>`;
+        c.appendChild(d); c.scrollTop=c.scrollHeight;
+        document.getElementById('l-stat').innerHTML = `<span class="l-${t}">${m}</span>`;
+    },
+    copy() { navigator.clipboard.writeText(document.getElementById('l-cont').innerText); },
+    clear() { document.getElementById('l-cont').innerHTML=''; }
+};
+
+const IO = {
+    export() { Utils.copy(Store.state); const a=document.createElement('a'); a.href="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(Store.state)); a.download="titan.json"; a.click(); },
+    import(el) { const f=el.files[0]; if(f){ const r=new FileReader(); r.onload=e=>{ try{ Store.state=JSON.parse(e.target.result); Store.save(); Graph.refresh(); Logger.log("Imported","suc"); }catch(e){Logger.log("Fail","err");} }; r.readAsText(f); } }
+};
+
+const App = { undo:()=>Store.undo(), redo:()=>Store.redo() };
+
+window.onload = () => { Store.init(); Graph.init(); Logger.log("TitanGraph v13 Online", "suc"); 
+    document.onkeydown = e => { if(e.ctrlKey&&e.key==='z') App.undo(); if(e.ctrlKey&&e.key==='y') App.redo(); if(e.key==='Delete') Graph.delSel(); };
+};
 </script>
 </body>
 </html>
