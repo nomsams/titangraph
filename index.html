@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TitanGraph v8 | Ultimate Intelligence Platform</title>
+    <title>TitanGraph v9 | Stability & Interaction</title>
     
     <!-- CORE ENGINES -->
     <script src="//unpkg.com/three"></script>
@@ -19,11 +19,10 @@
         /* --- CSS VARIABLES --- */
         :root {
             --bg-dark: #050505;
-            --bg-panel: #0b0d10;
-            --bg-panel-light: #15181e;
-            --border: #252830;
+            --bg-panel: #0f1115;
+            --border: #2a2e38;
             --accent: #00f2ff;
-            --accent-dim: rgba(0, 242, 255, 0.15);
+            --accent-dim: rgba(0, 242, 255, 0.1);
             --text-main: #e0e6ed;
             --text-muted: #6c757d;
             --danger: #ff4757;
@@ -31,168 +30,135 @@
             --warning: #ffa502;
             --font-ui: 'Inter', sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
-            --shadow: 0 8px 24px rgba(0,0,0,0.6);
         }
 
-        /* --- RESET & BASE --- */
-        * { box-sizing: border-box; outline: none; user-select: none; scrollbar-width: thin; scrollbar-color: var(--border) var(--bg-panel); }
+        * { box-sizing: border-box; outline: none; user-select: none; }
         body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text-main); font-family: var(--font-ui); font-size: 14px; }
-        
-        /* Scrollbars */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: var(--bg-panel); }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #555; }
 
-        /* --- LAYOUT GRID --- */
+        /* --- LAYOUT --- */
         #app-container {
             display: grid;
-            grid-template-columns: 64px 1fr 380px;
-            grid-template-rows: 54px 1fr 220px;
+            grid-template-columns: 60px 1fr 350px;
+            grid-template-rows: 50px 1fr 200px;
             height: 100vh; width: 100vw;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            transition: all 0.3s ease;
         }
-        /* Layout States */
-        body.log-minimized #app-container { grid-template-rows: 54px 1fr 36px; }
-        body.inspector-closed #app-container { grid-template-columns: 64px 1fr 0px; }
+        body.log-minimized #app-container { grid-template-rows: 50px 1fr 35px; }
+        body.inspector-closed #app-container { grid-template-columns: 60px 1fr 0px; }
 
         /* --- HEADER --- */
         header {
             grid-column: 1 / -1; grid-row: 1;
             background: var(--bg-panel); border-bottom: 1px solid var(--border);
             display: flex; align-items: center; justify-content: space-between; padding: 0 20px;
-            z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            z-index: 100;
         }
-        .brand { 
-            font-family: var(--font-mono); font-weight: 700; color: var(--accent); 
-            font-size: 1.3rem; letter-spacing: 1px; display: flex; gap: 12px; align-items: center; text-shadow: 0 0 10px var(--accent-dim);
-        }
-        .brand span { font-size: 0.6em; color: var(--text-muted); border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; vertical-align: middle; }
-        
-        .header-tools { display: flex; gap: 8px; }
+        .brand { font-family: var(--font-mono); font-weight: 700; color: var(--accent); font-size: 1.2rem; letter-spacing: 1px; }
+        .header-tools { display: flex; gap: 10px; }
 
-        /* --- TOOLBAR (LEFT) --- */
+        /* --- TOOLBAR --- */
         #toolbar {
             grid-column: 1; grid-row: 2 / -1;
             background: var(--bg-panel); border-right: 1px solid var(--border);
-            display: flex; flex-direction: column; align-items: center; padding-top: 20px; gap: 12px;
+            display: flex; flex-direction: column; align-items: center; padding-top: 20px; gap: 15px;
             z-index: 90;
         }
         .tool-btn {
-            width: 44px; height: 44px; border-radius: 10px; border: 1px solid transparent;
+            width: 40px; height: 40px; border-radius: 8px; border: 1px solid transparent;
             background: transparent; color: var(--text-muted); cursor: pointer; transition: all 0.2s;
-            display: grid; place-items: center; font-size: 1.2rem; position: relative;
+            display: grid; place-items: center; font-size: 1.1rem; position: relative;
         }
-        .tool-btn:hover { color: var(--text-main); background: var(--bg-panel-light); transform: translateX(2px); }
-        .tool-btn.active { 
-            background: var(--accent-dim); color: var(--accent); border-color: var(--accent); 
-            box-shadow: 0 0 15px var(--accent-dim);
-        }
+        .tool-btn:hover { color: var(--text-main); background: #1a1d24; }
+        .tool-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-dim); }
+        
         /* Tooltip */
         .tool-btn[data-tooltip]:hover::after {
-            content: attr(data-tooltip); position: absolute; left: 55px; background: var(--bg-panel-light);
-            padding: 6px 12px; border: 1px solid var(--border); border-radius: 4px; color: var(--text-main);
-            font-size: 0.85rem; white-space: nowrap; z-index: 1000; pointer-events: none; box-shadow: var(--shadow);
+            content: attr(data-tooltip); position: absolute; left: 50px; background: #1a1d24;
+            padding: 5px 10px; border: 1px solid var(--border); border-radius: 4px; color: var(--text-main);
+            font-size: 0.8rem; white-space: nowrap; z-index: 1000; pointer-events: none;
         }
 
-        /* --- VIEWPORT (CENTER) --- */
+        /* --- VIEWPORT --- */
         #viewport {
             grid-column: 2; grid-row: 2;
             position: relative; overflow: hidden; background: #000;
-            background-image: radial-gradient(circle at center, #111 0%, #000 100%);
         }
-        #graph-canvas { width: 100%; height: 100%; }
+        #graph-canvas { width: 100%; height: 100%; cursor: default; }
 
         /* Overlays */
         .overlay-panel {
-            position: absolute; background: rgba(11, 13, 16, 0.95); backdrop-filter: blur(8px);
-            border: 1px solid var(--border); border-radius: 8px; padding: 12px; z-index: 10;
-            box-shadow: var(--shadow);
+            position: absolute; background: rgba(15, 17, 21, 0.9); backdrop-filter: blur(5px);
+            border: 1px solid var(--border); border-radius: 6px; padding: 10px; z-index: 10;
         }
-        #search-bar { top: 20px; left: 20px; display: flex; align-items: center; gap: 10px; width: 320px; }
-        #search-input { background: transparent; border: none; color: white; width: 100%; font-family: var(--font-mono); font-size: 0.9rem; }
+        #search-bar { top: 20px; left: 20px; display: flex; align-items: center; gap: 10px; width: 300px; }
+        #search-input { background: transparent; border: none; color: white; width: 100%; font-family: var(--font-mono); }
         
-        #analytics-overlay { top: 20px; right: 20px; font-size: 0.8rem; color: var(--text-muted); text-align: right; min-width: 150px; }
-        .stat-item { margin-bottom: 6px; display: flex; justify-content: space-between; }
+        #analytics-overlay { top: 20px; right: 20px; font-size: 0.8rem; color: var(--text-muted); text-align: right; }
         .stat-val { color: var(--accent); font-weight: bold; font-family: var(--font-mono); }
 
-        #zoom-controls { bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; }
-        .mini-btn { width: 36px; height: 36px; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-main); cursor: pointer; border-radius: 6px; font-size: 1rem; display: grid; place-items: center; transition: 0.2s; }
-        .mini-btn:hover { background: var(--bg-panel-light); border-color: var(--accent); }
+        #zoom-controls { bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 5px; }
+        .mini-btn { width: 30px; height: 30px; background: var(--bg-panel); border: 1px solid var(--border); color: var(--text-main); cursor: pointer; border-radius: 4px; }
+        .mini-btn:hover { background: #1a1d24; }
 
-        /* --- INSPECTOR (RIGHT) --- */
+        /* --- INSPECTOR --- */
         #inspector {
             grid-column: 3; grid-row: 2 / -1;
             background: var(--bg-panel); border-left: 1px solid var(--border);
-            display: flex; flex-direction: column; overflow: hidden;
-            z-index: 90;
+            display: flex; flex-direction: column; overflow: hidden; z-index: 90;
         }
         .panel-header {
-            padding: 18px; border-bottom: 1px solid var(--border); background: var(--bg-panel-light);
-            font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--accent);
-            display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem;
+            padding: 15px; border-bottom: 1px solid var(--border); background: #1a1d24;
+            font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--accent);
+            display: flex; justify-content: space-between; align-items: center;
         }
         .panel-content { padding: 0; overflow-y: auto; flex: 1; }
-        
-        .prop-section { border-bottom: 1px solid var(--border); padding: 20px; }
-        .prop-title { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; font-weight: 700; display: flex; justify-content: space-between; letter-spacing: 0.5px; }
-        
-        .form-group { margin-bottom: 15px; }
-        .form-label { display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; }
+        .prop-section { border-bottom: 1px solid var(--border); padding: 15px; }
+        .form-group { margin-bottom: 12px; }
+        .form-label { display: block; font-size: 0.7rem; color: var(--text-muted); margin-bottom: 4px; }
         .form-input { 
             width: 100%; background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-main);
-            padding: 10px; border-radius: 6px; font-family: var(--font-mono); font-size: 0.85rem; transition: 0.2s;
+            padding: 8px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.85rem;
         }
-        .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim); }
-        textarea.form-input { resize: vertical; min-height: 80px; line-height: 1.5; }
-
-        /* JSON Viewer */
         .json-pre {
             background: #080808; padding: 10px; border-radius: 6px; border: 1px solid #222;
             font-family: var(--font-mono); font-size: 0.75rem; color: #a8b2d1;
             overflow-x: auto; white-space: pre-wrap; max-height: 300px;
         }
 
-        /* --- LOGS (BOTTOM) --- */
+        /* --- LOGS --- */
         #log-panel {
             grid-column: 2; grid-row: 3;
             background: #000; border-top: 1px solid var(--accent);
             display: flex; flex-direction: column; font-family: var(--font-mono); z-index: 80;
         }
         .log-toolbar {
-            height: 36px; background: var(--bg-panel); border-bottom: 1px solid #222;
-            display: flex; align-items: center; justify-content: space-between; padding: 0 15px; cursor: pointer;
+            height: 35px; background: var(--bg-panel); border-bottom: 1px solid #222;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 10px; cursor: pointer;
         }
-        .log-toolbar:hover { background: var(--bg-panel-light); }
-        #log-container { flex: 1; overflow-y: auto; padding: 10px 15px; font-size: 0.8rem; color: #ccc; }
-        
-        .log-entry { margin-bottom: 5px; display: flex; gap: 15px; border-bottom: 1px solid #111; padding-bottom: 3px; }
-        .log-ts { color: #555; min-width: 75px; }
-        .log-msg { word-break: break-all; }
+        #log-container { flex: 1; overflow-y: auto; padding: 10px; font-size: 0.8rem; color: #ccc; }
+        .log-entry { margin-bottom: 4px; display: flex; gap: 10px; border-bottom: 1px solid #111; padding-bottom: 2px; }
+        .log-ts { color: #555; min-width: 70px; }
         .log-info { color: var(--accent); }
         .log-error { color: var(--danger); }
         .log-success { color: var(--success); }
-        .log-warn { color: var(--warning); }
 
         /* --- CONTEXT MENU --- */
         #ctx-menu {
             position: fixed; display: none; background: var(--bg-panel); border: 1px solid var(--accent);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.9); z-index: 2000; min-width: 220px; border-radius: 6px; overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.8); z-index: 2000; min-width: 200px; border-radius: 4px;
         }
-        .ctx-item { padding: 12px 16px; cursor: pointer; font-size: 0.9rem; display: flex; gap: 12px; align-items: center; color: var(--text-main); transition: 0.1s; border-bottom: 1px solid #1a1a1a; }
+        .ctx-item { padding: 10px 15px; cursor: pointer; font-size: 0.85rem; display: flex; gap: 10px; align-items: center; color: var(--text-main); }
         .ctx-item:hover { background: var(--accent); color: #000; }
-        .ctx-divider { height: 1px; background: var(--border); margin: 0; }
-        .ctx-icon { width: 24px; text-align: center; }
+        .ctx-divider { height: 1px; background: var(--border); margin: 4px 0; }
 
         /* --- UTILS --- */
         .btn {
-            background: var(--accent); color: #000; border: none; padding: 8px 16px; border-radius: 6px;
+            background: var(--accent); color: #000; border: none; padding: 6px 14px; border-radius: 4px;
             cursor: pointer; font-weight: 700; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 8px;
-            transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px;
         }
-        .btn:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 12px var(--accent-dim); }
+        .btn:hover { filter: brightness(1.1); }
         .btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text-muted); }
-        .btn-secondary:hover { border-color: var(--text-main); color: var(--text-main); background: var(--bg-panel-light); }
+        .btn-secondary:hover { border-color: var(--text-main); color: var(--text-main); }
         .btn-danger { background: rgba(255, 71, 87, 0.1); color: var(--danger); border: 1px solid var(--danger); }
         .btn-danger:hover { background: var(--danger); color: white; }
 
@@ -203,16 +169,13 @@
 <div id="app-container">
     <!-- HEADER -->
     <header>
-        <div class="brand">
-            <i class="fas fa-satellite-dish"></i> TITAN GRAPH <span>v8.0 ULT</span>
-        </div>
+        <div class="brand"><i class="fas fa-network-wired"></i> TITAN GRAPH v9</div>
         <div class="header-tools">
-            <button class="btn btn-secondary" onclick="App.undo()" title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
-            <button class="btn btn-secondary" onclick="App.redo()" title="Redo (Ctrl+Y)"><i class="fas fa-redo"></i></button>
+            <button class="btn btn-secondary" onclick="App.undo()"><i class="fas fa-undo"></i></button>
+            <button class="btn btn-secondary" onclick="App.redo()"><i class="fas fa-redo"></i></button>
             <div style="width: 1px; background: var(--border); margin: 0 10px;"></div>
-            <button class="btn btn-secondary" onclick="IO.takeScreenshot()"><i class="fas fa-camera"></i> SNAP</button>
-            <button class="btn btn-secondary" onclick="IO.exportJSON()"><i class="fas fa-file-code"></i> JSON</button>
-            <button class="btn" onclick="document.getElementById('file-in').click()"><i class="fas fa-upload"></i> Import</button>
+            <button class="btn btn-secondary" onclick="IO.exportJSON()">JSON</button>
+            <button class="btn" onclick="document.getElementById('file-in').click()">Import</button>
             <input type="file" id="file-in" hidden onchange="IO.importJSON(this)">
         </div>
     </header>
@@ -224,7 +187,7 @@
         <div style="width: 20px; height: 1px; background: var(--border);"></div>
         
         <div class="tool-btn active" id="tool-select" onclick="Tools.set('select')" data-tooltip="Select / Move"><i class="fas fa-mouse-pointer"></i></div>
-        <div class="tool-btn" id="tool-link" onclick="Tools.set('link')" data-tooltip="Link (Drag to Connect)"><i class="fas fa-link"></i></div>
+        <div class="tool-btn" id="tool-link" onclick="Tools.set('link')" data-tooltip="Drag to Link"><i class="fas fa-link"></i></div>
         <div class="tool-btn" id="tool-draw" onclick="Tools.set('draw')" data-tooltip="Draw Visual Line"><i class="fas fa-pen-nib"></i></div>
         <div class="tool-btn" onclick="Graph.addNodeManual()" data-tooltip="Add Entity"><i class="fas fa-plus"></i></div>
         
@@ -238,23 +201,19 @@
     <div id="viewport">
         <div id="graph-canvas"></div>
         
-        <!-- Search Overlay -->
         <div id="search-bar" class="overlay-panel">
             <i class="fas fa-search" style="color: var(--text-muted)"></i>
             <input type="text" id="search-input" placeholder="Search entities (Ctrl+K)..." oninput="Graph.search(this.value)">
         </div>
 
-        <!-- Analytics Overlay -->
         <div id="analytics-overlay" class="overlay-panel">
-            <div class="stat-item">Nodes <span class="stat-val" id="stat-nodes">0</span></div>
-            <div class="stat-item">Links <span class="stat-val" id="stat-links">0</span></div>
-            <div class="stat-item">Density <span class="stat-val" id="stat-density">0.00</span></div>
-            <div class="stat-item" style="margin-top:5px; border-top:1px solid #333; padding-top:5px;">
-                <span id="stat-sel" style="color:#fff; font-weight:bold;">No Selection</span>
+            <div>Nodes: <span class="stat-val" id="stat-nodes">0</span></div>
+            <div>Links: <span class="stat-val" id="stat-links">0</span></div>
+            <div style="margin-top:5px; border-top:1px solid #333; padding-top:5px;">
+                <span id="stat-sel" style="color:#fff;">No Selection</span>
             </div>
         </div>
 
-        <!-- Zoom Controls -->
         <div id="zoom-controls">
             <button class="mini-btn" onclick="Graph.zoom(1)"><i class="fas fa-plus"></i></button>
             <button class="mini-btn" onclick="Graph.zoom(-1)"><i class="fas fa-minus"></i></button>
@@ -268,9 +227,8 @@
             <button class="btn btn-secondary" style="padding: 2px 6px;" onclick="UI.toggleInspector()"><i class="fas fa-times"></i></button>
         </div>
         <div class="panel-content" id="props-content">
-            <div style="padding: 40px; text-align: center; color: var(--text-muted);">
-                <i class="fas fa-microchip" style="font-size: 3rem; margin-bottom: 20px; opacity: 0.2;"></i><br>
-                Select an entity to inspect data.
+            <div style="padding: 30px; text-align: center; color: var(--text-muted);">
+                Select an entity.
             </div>
         </div>
     </div>
@@ -294,36 +252,23 @@
 
 <!-- CONTEXT MENU -->
 <div id="ctx-menu">
-    <div class="ctx-item" onclick="Transforms.run('dns')"><span class="ctx-icon"><i class="fas fa-globe"></i></span> Resolve DNS</div>
-    <div class="ctx-item" onclick="Transforms.run('whois')"><span class="ctx-icon"><i class="fas fa-id-card"></i></span> WHOIS / RDAP</div>
-    <div class="ctx-item" onclick="Transforms.run('crt')"><span class="ctx-icon"><i class="fas fa-certificate"></i></span> Find Subdomains</div>
-    <div class="ctx-item" onclick="Transforms.run('geoip')"><span class="ctx-icon"><i class="fas fa-map-marker-alt"></i></span> GeoIP Lookup</div>
+    <div class="ctx-item" onclick="Transforms.run('dns')"><i class="fas fa-globe"></i> Resolve DNS</div>
+    <div class="ctx-item" onclick="Transforms.run('whois')"><i class="fas fa-id-card"></i> WHOIS / RDAP</div>
+    <div class="ctx-item" onclick="Transforms.run('crt')"><i class="fas fa-certificate"></i> Find Subdomains</div>
+    <div class="ctx-item" onclick="Transforms.run('geoip')"><i class="fas fa-map-marker-alt"></i> GeoIP Lookup</div>
     <div class="ctx-divider"></div>
-    <div class="ctx-item" onclick="Graph.deleteSelected()"><span class="ctx-icon"><i class="fas fa-trash" style="color: var(--danger)"></i></span> Delete Entity</div>
+    <div class="ctx-item" onclick="Graph.deleteSelected()"><i class="fas fa-trash" style="color: var(--danger)"></i> Delete Entity</div>
 </div>
 
 <script>
 /**
- * TITAN GRAPH v8: ULTIMATE EDITION
- * ----------------------------------
- * Features:
- * - Robust 3D/2D Switching
- * - Visual Link Dragging
- * - Manual Drawing Mode
- * - Fixed DNS/Transforms
- * - Advanced JSON Inspector
+ * TITAN GRAPH v9: STABILITY & INTERACTION
  */
 
-// --- 1. CONFIGURATION ---
+// --- CONFIG ---
 const Config = {
-    colors: {
-        domain: '#00f2ff', ip: '#00ff9d', person: '#ffcc00',
-        location: '#ff00ff', asn: '#aa00ff', default: '#8395a7'
-    },
-    icons: {
-        domain: '\uf0ac', ip: '\uf233', person: '\uf007',
-        location: '\uf3c5', asn: '\uf19c', default: '\uf128'
-    }
+    colors: { domain: '#00f2ff', ip: '#00ff9d', person: '#ffcc00', location: '#ff00ff', asn: '#aa00ff', default: '#8395a7' },
+    icons: { domain: '\uf0ac', ip: '\uf233', person: '\uf007', location: '\uf3c5', asn: '\uf19c', default: '\uf128' }
 };
 
 const Utils = {
@@ -331,40 +276,31 @@ const Utils = {
         const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
     }),
-    copy: (obj) => JSON.parse(JSON.stringify(obj)),
-    download: (content, name, type) => {
-        const blob = new Blob([content], {type});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = name;
-        a.click();
-    }
+    copy: (obj) => JSON.parse(JSON.stringify(obj))
 };
 
-// --- 2. STATE MANAGER ---
+// --- STATE ---
 const Store = {
     state: { nodes: [], links: [] },
     history: [], historyIndex: -1,
 
     init() {
-        const saved = localStorage.getItem('titan_v8');
-        if (saved) {
-            try { this.state = JSON.parse(saved); Logger.log("Session restored.", "success"); } 
-            catch(e) { this.reset(); }
-        } else { this.reset(); }
+        const saved = localStorage.getItem('titan_v9');
+        if (saved) { try { this.state = JSON.parse(saved); Logger.log("Session restored.", "success"); } catch(e) { this.reset(); } } 
+        else { this.reset(); }
         this.saveState();
     },
 
     reset() {
         this.state = { nodes: [{ id: Utils.uuid(), label: 'Start', type: 'default', x:0, y:0, val:1 }], links: [] };
-        Logger.log("New session started.", "info");
+        Logger.log("New session.", "info");
     },
 
     saveState() {
         if (this.historyIndex < this.history.length - 1) this.history = this.history.slice(0, this.historyIndex + 1);
         this.history.push(Utils.copy(this.state));
         if (this.history.length > 50) this.history.shift(); else this.historyIndex++;
-        localStorage.setItem('titan_v8', JSON.stringify(this.state));
+        localStorage.setItem('titan_v9', JSON.stringify(this.state));
         UI.updateStats();
     },
 
@@ -373,7 +309,7 @@ const Store = {
             this.historyIndex--;
             this.state = Utils.copy(this.history[this.historyIndex]);
             Graph.refresh();
-            Logger.log("Undo performed.", "info");
+            Logger.log("Undo.", "info");
         }
     },
 
@@ -382,7 +318,7 @@ const Store = {
             this.historyIndex++;
             this.state = Utils.copy(this.history[this.historyIndex]);
             Graph.refresh();
-            Logger.log("Redo performed.", "info");
+            Logger.log("Redo.", "info");
         }
     },
 
@@ -391,7 +327,7 @@ const Store = {
         if (existing) return existing;
         const node = {
             id: Utils.uuid(), label: data.label, type: data.type || 'default',
-            val: 1, meta: data.meta || {}, notes: "", x:0, y:0, z:0
+            val: 1, meta: data.meta || {}, notes: "", x: data.x || 0, y: data.y || 0, z: 0
         };
         this.state.nodes.push(node);
         this.saveState();
@@ -400,12 +336,17 @@ const Store = {
 
     addLink(sourceId, targetId, type = 'semantic') {
         if (sourceId === targetId) return;
+        // Check if link exists (bidirectional check)
         const exists = this.state.links.find(l => 
-            (l.source.id === sourceId && l.target.id === targetId) || (l.source === sourceId && l.target === targetId)
+            (l.source.id === sourceId && l.target.id === targetId) || 
+            (l.source === sourceId && l.target === targetId) ||
+            (l.source.id === targetId && l.target.id === sourceId) || 
+            (l.source === targetId && l.target === sourceId)
         );
         if (!exists) {
             this.state.links.push({ source: sourceId, target: targetId, type: type });
             this.saveState();
+            Graph.refresh(); // Important to refresh immediately to bind object references
         }
     },
 
@@ -421,7 +362,7 @@ const Store = {
     }
 };
 
-// --- 3. LOGGER ---
+// --- LOGGER ---
 const Logger = {
     log(msg, type = 'info') {
         const container = document.getElementById('log-container');
@@ -438,14 +379,15 @@ const Logger = {
     clear() { document.getElementById('log-container').innerHTML = ''; }
 };
 
-// --- 4. GRAPH ENGINE ---
+// --- GRAPH ENGINE ---
 const Graph = {
     instance: null,
     mode: '2D',
     selected: null,
     physics: true,
     hoverNode: null,
-    mousePos: {x:0, y:0}, // For drawing lines
+    mousePos: {x:0, y:0},
+    wireStartNode: null, // For Rim Linking
 
     init() {
         this.render();
@@ -457,11 +399,11 @@ const Graph = {
         });
         document.addEventListener('click', () => document.getElementById('ctx-menu').style.display = 'none');
         
-        // Track mouse for Link/Draw tools
-        document.getElementById('graph-canvas').addEventListener('mousemove', (e) => {
-            const rect = e.target.getBoundingClientRect();
-            // Convert screen coords to canvas coords (approximate for 2D overlay)
-            // Note: ForceGraph transforms are complex, we use this for UI overlay lines mostly
+        // Track mouse for drawing lines
+        const el = document.getElementById('graph-canvas');
+        el.addEventListener('mousemove', e => {
+            const rect = el.getBoundingClientRect();
+            this.mousePos = { x: e.clientX - rect.left, y: e.clientY - rect.top };
         });
     },
 
@@ -471,9 +413,8 @@ const Graph = {
         document.getElementById('mode-2d').classList.toggle('active', mode === '2D');
         document.getElementById('mode-3d').classList.toggle('active', mode === '3D');
         
-        // Full cleanup
-        const el = document.getElementById('graph-canvas');
-        el.innerHTML = ''; 
+        // Clean destroy
+        document.getElementById('graph-canvas').innerHTML = ''; 
         this.instance = null;
         
         setTimeout(() => this.render(), 100);
@@ -484,6 +425,7 @@ const Graph = {
         this.physics = !this.physics;
         document.getElementById('tool-physics').classList.toggle('active', this.physics);
         if (!this.physics) {
+            // Unfix nodes
             Store.state.nodes.forEach(n => { n.fx = null; n.fy = null; n.fz = null; });
             if (this.instance) this.instance.d3ReheatSimulation();
             Logger.log("Physics: Flow State", "info");
@@ -505,67 +447,150 @@ const Graph = {
                 .nodeLabel('label')
                 .nodeColor(n => Config.colors[n.type] || Config.colors.default)
                 .linkColor(l => l.type === 'visual' ? '#555' : '#333')
-                .linkLineDash(l => l.type === 'visual' ? [4, 2] : null) // Visual lines are dashed
+                .linkLineDash(l => l.type === 'visual' ? [4, 2] : null)
                 .linkWidth(2)
                 .linkDirectionalArrowLength(4)
                 .linkDirectionalArrowRelPos(1)
+                .d3AlphaDecay(0.02) // Stabilize physics
+                .d3VelocityDecay(0.3)
                 .onNodeHover(node => {
                     this.hoverNode = node;
-                    el.style.cursor = node ? 'pointer' : (Tools.current === 'link' || Tools.current === 'draw' ? 'crosshair' : 'default');
+                    el.style.cursor = node ? 'pointer' : 'default';
                 })
                 .nodeCanvasObject((node, ctx, globalScale) => {
                     const label = node.label;
                     const fontSize = 12/globalScale;
                     const r = 6;
                     
-                    // Selection Halo
+                    // 1. Selection Halo
                     if (node === this.selected) {
                         ctx.beginPath(); ctx.arc(node.x, node.y, r * 1.8, 0, 2 * Math.PI);
                         ctx.fillStyle = 'rgba(0, 242, 255, 0.4)'; ctx.fill();
                     }
 
-                    // Target Glow (Link Mode)
-                    if (Tools.current === 'link' && this.hoverNode === node) {
+                    // 2. "Rim" Interaction (The Thingie)
+                    // If hovered or selected, draw the rim
+                    if (node === this.hoverNode || node === this.selected) {
+                        ctx.beginPath();
+                        ctx.arc(node.x, node.y, r + 4, 0, 2 * Math.PI);
+                        ctx.strokeStyle = '#00f2ff';
+                        ctx.lineWidth = 1/globalScale;
+                        ctx.stroke();
+                    }
+
+                    // 3. Target Glow (Link Mode)
+                    if ((Tools.current === 'link' || this.wireStartNode) && this.hoverNode === node && this.wireStartNode !== node) {
                         ctx.beginPath(); ctx.arc(node.x, node.y, r * 2.5, 0, 2 * Math.PI);
                         ctx.strokeStyle = '#ffff00'; ctx.lineWidth = 2/globalScale; ctx.stroke();
                     }
 
-                    // Node Body
+                    // 4. Node Body
                     ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
                     ctx.fillStyle = Config.colors[node.type] || Config.colors.default; ctx.fill();
 
-                    // Icon
+                    // 5. Icon
                     const icon = Config.icons[node.type] || Config.icons.default;
                     ctx.font = `${4}px "Font Awesome 6 Free"`; ctx.fillStyle = '#000';
                     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(icon, node.x, node.y);
 
-                    // Label
+                    // 6. Label
                     ctx.font = `${fontSize}px monospace`; ctx.fillStyle = '#e0e6ed';
                     ctx.fillText(label, node.x, node.y + r + fontSize);
                 })
                 .onNodeDrag((node, translate) => {
-                    // Update mouse pos for drawing line
+                    // If in Link/Draw mode, DO NOT move the node.
+                    // ForceGraph moves node by default. We must counteract or use dragEnd logic only.
+                    // Actually, ForceGraph modifies fx/fy during drag.
+                    if (Tools.current === 'link' || Tools.current === 'draw') {
+                        // Reset position to prevent movement
+                        node.fx = node.x; 
+                        node.fy = node.y;
+                    }
                 })
                 .onNodeDragEnd(node => {
-                    if (this.physics) { node.fx = node.x; node.fy = node.y; }
+                    if (this.physics && Tools.current === 'select') { node.fx = node.x; node.fy = node.y; }
                     
-                    // Link Logic
+                    // Drag-to-Link Logic
                     if ((Tools.current === 'link' || Tools.current === 'draw') && this.hoverNode && this.hoverNode !== node) {
                         const type = Tools.current === 'draw' ? 'visual' : 'semantic';
                         Store.addLink(node.id, this.hoverNode.id, type);
-                        Logger.log(`Linked ${node.label} -> ${this.hoverNode.label} (${type})`, "success");
+                        Logger.log(`Linked ${node.label} -> ${this.hoverNode.label}`, "success");
                     }
+                    
+                    // Reset fixed pos if physics is off and we weren't linking
+                    if (!this.physics && Tools.current === 'select') { node.fx = null; node.fy = null; }
                 })
                 .onRenderFramePost((ctx, globalScale) => {
-                    // Draw Yellow Line during drag in Link Mode
+                    // Draw Dynamic Line for Link/Draw Tools OR Rim Wiring
+                    let startNode = null;
+                    
+                    // Case A: Dragging in Link Mode
                     if ((Tools.current === 'link' || Tools.current === 'draw') && this.instance.d3Force('link')) {
-                        // ForceGraph doesn't expose drag target easily in render loop without tracking state manually
-                        // This is a limitation, but the "Snap" glow on hoverNode provides feedback.
+                        // Hard to get drag source from library internals easily.
+                        // We rely on the "Rim" wiring for visual lines mostly, 
+                        // or we can track mousedown node manually.
+                    }
+
+                    // Case B: Rim Wiring Active
+                    if (this.wireStartNode) {
+                        const start = this.wireStartNode;
+                        // Convert graph coords to screen coords for line drawing? 
+                        // No, ctx is in graph coords. We need mouse in graph coords.
+                        const mouseGraph = this.instance.screen2GraphCoords(this.mousePos.x, this.mousePos.y);
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(start.x, start.y);
+                        ctx.lineTo(mouseGraph.x, mouseGraph.y);
+                        ctx.strokeStyle = '#00f2ff';
+                        ctx.lineWidth = 2 / globalScale;
+                        ctx.setLineDash([4, 2]);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
                     }
                 })
-                .onNodeClick(this.onClick.bind(this))
+                .onNodeClick((node, event) => {
+                    // RIM CLICK DETECTION
+                    // Calculate distance from center of node to click
+                    // ForceGraph doesn't give exact click coords relative to node center easily in event
+                    // But we can check mode.
+                    
+                    if (this.wireStartNode) {
+                        // Complete Rim Link
+                        if (node !== this.wireStartNode) {
+                            Store.addLink(this.wireStartNode.id, node.id);
+                            Logger.log("Rim Link Created.", "success");
+                        }
+                        this.wireStartNode = null;
+                        return;
+                    }
+
+                    // Check if clicked on "Rim" (Outer edge)
+                    // We simulate this by checking if we are in a special mode or just standard click
+                    // User asked for "click on the outer rim". 
+                    // Implementation: If node is selected, clicking it again triggers wire mode?
+                    // Or better: Shift+Click triggers wire mode.
+                    // Or: We just check if we are in 'select' mode.
+                    
+                    this.onClick(node);
+                })
                 .onNodeRightClick(this.onRightClick.bind(this))
-                .onBackgroundClick(this.deselect.bind(this));
+                .onBackgroundClick((e) => {
+                    if (this.wireStartNode) {
+                        this.wireStartNode = null; // Cancel wiring
+                        Logger.log("Wiring cancelled.", "info");
+                    } else {
+                        this.deselect();
+                    }
+                });
+                
+                // Custom click handler for Rim Logic
+                // We wrap the canvas click to detect "Rim" vs "Body" if possible, 
+                // but for now, let's add a specific "Wire" tool button on the node via Context Menu or Tool.
+                // Actually, let's make it so clicking the node while holding 'Alt' starts wiring, 
+                // OR clicking the visual rim we drew.
+                // Since we can't easily detect rim click in Canvas without raycasting manually:
+                // We will implement: Click Node -> Select. Click Node AGAIN (when selected) -> Start Wire.
+                
         } else {
             // 3D MODE
             this.instance = ForceGraph3D()(el)
@@ -575,8 +600,6 @@ const Graph = {
                 .nodeColor(n => Config.colors[n.type] || Config.colors.default)
                 .linkWidth(1)
                 .linkColor(() => '#555')
-                .linkDirectionalArrowLength(3.5)
-                .linkDirectionalArrowRelPos(1)
                 .nodeThreeObject(node => {
                     const sprite = new SpriteText(node.label);
                     sprite.color = node === this.selected ? Config.colors.domain : '#e0e6ed';
@@ -599,9 +622,15 @@ const Graph = {
     },
 
     onClick(node) {
+        // RIM LOGIC: If node is already selected, clicking it again starts wiring
+        if (this.selected === node && !this.wireStartNode) {
+            this.wireStartNode = node;
+            Logger.log("Wire Mode Active. Click another node to link.", "info");
+            return;
+        }
+
         this.selected = node;
         UI.renderInspector(node);
-        // NO ZOOM on click, just select
     },
 
     onRightClick(node, e) {
@@ -615,13 +644,26 @@ const Graph = {
 
     deselect() {
         this.selected = null;
+        this.wireStartNode = null;
         UI.clearInspector();
         this.refresh();
     },
 
     addNodeManual() {
         const label = prompt("Entity Name:");
-        if (label) { Store.addNode({ label, type: 'default' }); this.refresh(); Logger.log(`Added node: ${label}`, "success"); }
+        if (label) { 
+            // Add node at center of screen
+            let pos = {x:0, y:0};
+            if (this.instance && this.mode === '2D') {
+                // Approximate center based on zoom/pan is hard to get perfectly without internal API
+                // But we can just add it at (0,0) and let user move it, OR use screen2GraphCoords of center
+                const center = this.instance.screen2GraphCoords(this.instance.width()/2, this.instance.height()/2);
+                pos = center;
+            }
+            Store.addNode({ label, type: 'default', x: pos.x, y: pos.y }); 
+            this.refresh(); 
+            Logger.log(`Added node: ${label}`, "success"); 
+        }
     },
 
     deleteSelected() {
@@ -644,7 +686,7 @@ const Graph = {
         }
     },
 
-    fit() { this.instance.zoomToFit(400, 200); }, // Increased padding
+    fit() { this.instance.zoomToFit(400, 100); },
 
     zoom(dir) {
         if (this.mode === '2D') {
@@ -657,7 +699,7 @@ const Graph = {
     }
 };
 
-// --- 5. TOOLS ---
+// --- TOOLS ---
 const Tools = {
     current: 'select',
     set(tool) {
@@ -668,18 +710,18 @@ const Tools = {
         const el = document.getElementById('graph-canvas');
         if (tool === 'link') {
             el.style.cursor = 'crosshair';
-            Logger.log("Link Mode: Drag node to node to connect.", "info");
+            Logger.log("Link Mode: Drag node to node.", "info");
         } else if (tool === 'draw') {
             el.style.cursor = 'crosshair';
             Logger.log("Draw Mode: Drag to create visual line.", "info");
         } else {
             el.style.cursor = 'default';
-            Logger.log("Select Mode active.", "info");
+            Logger.log("Select Mode.", "info");
         }
     }
 };
 
-// --- 6. TRANSFORMS ---
+// --- TRANSFORMS ---
 const Transforms = {
     async fetch(url) {
         const proxies = ['https://api.allorigins.win/raw?url=', 'https://corsproxy.io/?', ''];
@@ -705,7 +747,9 @@ const Transforms = {
                     let c = 0;
                     data.Answer.forEach(r => {
                         if (r.type === 1) {
-                            const newNode = Store.addNode({ label: r.data, type: 'ip' });
+                            // Calc position near parent
+                            const pos = { x: node.x + (Math.random()-0.5)*50, y: node.y + (Math.random()-0.5)*50 };
+                            const newNode = Store.addNode({ label: r.data, type: 'ip', x: pos.x, y: pos.y });
                             Store.addLink(node.id, newNode.id);
                             c++;
                         }
@@ -724,7 +768,7 @@ const Transforms = {
                         let name = e.handle;
                         if(e.vcardArray) { const fn = e.vcardArray[1].find(x=>x[0]==='fn'); if(fn) name=fn[3]; }
                         if(name) {
-                            const n = Store.addNode({ label: name, type: 'person' });
+                            const n = Store.addNode({ label: name, type: 'person', x: node.x+20, y: node.y+20 });
                             Store.addLink(node.id, n.id);
                         }
                     });
@@ -735,7 +779,7 @@ const Transforms = {
                 const data = await this.fetch(`https://crt.sh/?q=%.${node.label}&output=json`);
                 const unique = [...new Set(data.map(d => d.name_value))].slice(0, 10);
                 unique.forEach(sub => {
-                    const n = Store.addNode({ label: sub, type: 'domain' });
+                    const n = Store.addNode({ label: sub, type: 'domain', x: node.x+30, y: node.y+30 });
                     Store.addLink(node.id, n.id);
                 });
                 Logger.log(`Found ${unique.length} subdomains.`, "success");
@@ -743,7 +787,7 @@ const Transforms = {
             else if (type === 'geoip') {
                 const data = await this.fetch(`https://ipapi.co/${node.label}/json/`);
                 if(data.city) {
-                    const loc = Store.addNode({ label: `${data.city}, ${data.country_code}`, type: 'location' });
+                    const loc = Store.addNode({ label: `${data.city}, ${data.country_code}`, type: 'location', x: node.x, y: node.y+40 });
                     Store.addLink(node.id, loc.id);
                     node.meta = { ...node.meta, geoip: data };
                     Logger.log("GeoIP location found.", "success");
@@ -755,7 +799,7 @@ const Transforms = {
     }
 };
 
-// --- 7. UI MANAGER ---
+// --- UI MANAGER ---
 const UI = {
     renderInspector(node) {
         const container = document.getElementById('props-content');
@@ -801,17 +845,12 @@ const UI = {
     },
 
     updateStats() {
-        const nodes = Store.state.nodes.length;
-        const links = Store.state.links.length;
-        document.getElementById('stat-nodes').innerText = nodes;
-        document.getElementById('stat-links').innerText = links;
-        // Density = 2 * E / (N * (N-1))
-        const density = nodes > 1 ? (2 * links) / (nodes * (nodes - 1)) : 0;
-        document.getElementById('stat-density').innerText = density.toFixed(4);
+        document.getElementById('stat-nodes').innerText = Store.state.nodes.length;
+        document.getElementById('stat-links').innerText = Store.state.links.length;
     }
 };
 
-// --- 8. IO MANAGER ---
+// --- IO MANAGER ---
 const IO = {
     exportJSON() { Utils.download(JSON.stringify(Store.state, null, 2), `titan_${Date.now()}.json`, 'application/json'); },
     importJSON(input) {
@@ -824,36 +863,29 @@ const IO = {
         };
         reader.readAsText(file);
     },
-    takeScreenshot() {
-        // Simple canvas to image
-        const canvas = document.querySelector('canvas');
-        if(canvas) {
-            const link = document.createElement('a');
-            link.download = `titan_snap_${Date.now()}.png`;
-            link.href = canvas.toDataURL();
-            link.click();
-            Logger.log("Screenshot saved.", "success");
-        }
+    download: (content, name, type) => {
+        const blob = new Blob([content], {type});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        a.click();
     }
 };
 
-// --- BOOTSTRAP ---
 const App = { undo: () => Store.undo(), redo: () => Store.redo() };
 
 window.onload = () => {
     Store.init();
     Graph.init();
     
-    // Global Shortcuts
     document.addEventListener('keydown', (e) => {
         if (e.ctrlKey && e.key === 'z') { e.preventDefault(); App.undo(); }
         if (e.ctrlKey && e.key === 'y') { e.preventDefault(); App.redo(); }
         if (e.ctrlKey && e.key === 'k') { e.preventDefault(); document.getElementById('search-input').focus(); }
         if (e.key === 'Delete') Graph.deleteSelected();
-        if (e.shiftKey) { /* Enable Multi-Select Logic if needed */ }
     });
 
-    Logger.log("TitanGraph v8 Ultimate Online.", "success");
+    Logger.log("TitanGraph v9 Online.", "success");
 };
 
 </script>
