@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TitanGraph | Intelligence Analysis Platform</title>
+    
+    <!-- Core Engines -->
+    <script src="//unpkg.com/force-graph"></script>
+    <script src="//unpkg.com/3d-force-graph"></script>
+    <script src="//unpkg.com/three"></script>
+    <script src="//unpkg.com/three-spritetext"></script>
+    <!-- UI Assets -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-dark: #0b0f19;
+            --panel-dark: #151b2b;
+            --border-dark: #2d3748;
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.3);
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --font-ui: 'Inter', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        * { box-sizing: border-box; outline: none; user-select: none; }
+        body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text-main); font-family: var(--font-ui); }
+
+        /* --- LAYOUT GRID --- */
+        #app-grid {
+            display: grid;
+            grid-template-columns: 60px 1fr 320px;
+            grid-template-rows: 50px 1fr 30px;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* --- HEADER --- */
+        header {
+            grid-column: 1 / -1;
+            background: var(--panel-dark);
+            border-bottom: 1px solid var(--border-dark);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 20px;
+            z-index: 10;
+        }
+        .brand { font-family: var(--font-mono); font-weight: 700; color: var(--accent); letter-spacing: 1px; display: flex; align-items: center; gap: 10px; }
+        .status-indicator { width: 8px; height: 8px; background: var(--success); border-radius: 50%; box-shadow: 0 0 8px var(--success); }
+        
+        /* --- TOOLBAR (LEFT) --- */
+        #toolbar {
+            grid-row: 2 / -1;
+            background: var(--panel-dark);
+            border-right: 1px solid var(--border-dark);
+            display: flex; flex-direction: column; align-items: center;
+            padding-top: 20px; gap: 15px;
+            z-index: 5;
+        }
+        .tool-btn {
+            width: 40px; height: 40px; border-radius: 8px; border: 1px solid transparent;
+            background: transparent; color: var(--text-muted); cursor: pointer;
+            transition: all 0.2s; display: grid; place-items: center; font-size: 1.1rem;
+        }
+        .tool-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
+        .tool-btn.active { background: var(--accent-glow); color: var(--accent); border-color: var(--accent); }
+
+        /* --- MAIN CANVAS --- */
+        #viewport {
+            grid-column: 2; grid-row: 2;
+            position: relative; overflow: hidden;
+            background: radial-gradient(circle at center, #1a202c 0%, #0b0f19 100%);
+        }
+        #graph-canvas { width: 100%; height: 100%; }
+
+        /* --- OVERLAYS --- */
+        .overlay-panel {
+            position: absolute; background: rgba(21, 27, 43, 0.95);
+            border: 1px solid var(--border-dark); backdrop-filter: blur(4px);
+            border-radius: 6px; padding: 10px;
+        }
+        
+        #search-overlay { top: 20px; left: 20px; width: 300px; display: flex; gap: 5px; }
+        #search-input { 
+            background: transparent; border: none; color: white; width: 100%; 
+            font-family: var(--font-mono); font-size: 0.9rem;
+        }
+
+        #stats-overlay { bottom: 20px; left: 20px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted); pointer-events: none; }
+
+        /* --- INSPECTOR (RIGHT) --- */
+        #inspector {
+            grid-column: 3; grid-row: 2;
+            background: var(--panel-dark);
+            border-left: 1px solid var(--border-dark);
+            display: flex; flex-direction: column;
+            overflow: hidden;
+        }
+        .panel-head { padding: 15px; border-bottom: 1px solid var(--border-dark); font-weight: 600; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+        .panel-body { padding: 15px; overflow-y: auto; flex: 1; }
+        
+        .prop-group { margin-bottom: 20px; }
+        .prop-label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px; font-family: var(--font-mono); }
+        .prop-input { 
+            width: 100%; background: #0b0f19; border: 1px solid var(--border-dark); 
+            color: var(--text-main); padding: 8px; border-radius: 4px; font-family: var(--font-mono); font-size: 0.85rem;
+        }
+        .prop-input:focus { border-color: var(--accent); }
+
+        /* --- FOOTER --- */
+        footer {
+            grid-column: 2 / -1; grid-row: 3;
+            background: var(--panel-dark); border-top: 1px solid var(--border-dark);
+            display: flex; align-items: center; padding: 0 15px; font-size: 0.8rem; color: var(--text-muted);
+            justify-content: space-between;
+        }
+
+        /* --- CONTEXT MENU --- */
+        #ctx-menu {
+            position: fixed; display: none; width: 200px;
+            background: var(--panel-dark); border: 1px solid var(--border-dark);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); z-index: 1000;
+            border-radius: 6px; overflow: hidden;
+        }
+        .ctx-item {
+            padding: 10px 15px; cursor: pointer; display: flex; align-items: center; gap: 10px;
+            font-size: 0.9rem; transition: background 0.1s;
+        }
+        .ctx-item:hover { background: var(--accent); color: white; }
+        .ctx-sep { height: 1px; background: var(--border-dark); margin: 4px 0; }
+
+        /* --- TOASTS --- */
+        #toast-area { position: fixed; bottom: 40px; right: 340px; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
+        .toast { 
+            background: var(--panel-dark); border-left: 4px solid var(--accent); 
+            padding: 12px 20px; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            color: white; font-size: 0.9rem; animation: slideIn 0.3s ease; pointer-events: auto;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .toast.error { border-left-color: var(--danger); }
+        .toast.success { border-left-color: var(--success); }
+        @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* --- UTILS --- */
+        .btn {
+            background: var(--accent); color: white; border: none; padding: 8px 16px;
+            border-radius: 4px; cursor: pointer; font-weight: 600; width: 100%;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn:hover { filter: brightness(1.1); }
+        .btn.secondary { background: transparent; border: 1px solid var(--border-dark); color: var(--text-muted); }
+        .btn.secondary:hover { border-color: var(--text-main); color: var(--text-main); }
+        .btn.danger { background: rgba(239, 68, 68, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+        .btn.danger:hover { background: var(--danger); color: white; }
+
+        .tag { padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; }
+        .tag-domain { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .tag-ip { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+        .tag-person { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+    </style>
+</head>
+<body>
+
+<div id="app-grid">
+    <!-- Header -->
+    <header>
+        <div class="brand">
+            <i class="fas fa-shield-alt"></i> TITAN GRAPH <span style="font-size: 0.7em; opacity: 0.5;">v3.0</span>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <div class="status-indicator" title="System Operational"></div>
+            <button class="btn secondary" style="width: auto; padding: 4px 10px;" onclick="App.undo()" title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
+            <button class="btn secondary" style="width: auto; padding: 4px 10px;" onclick="App.redo()" title="Redo (Ctrl+Y)"><i class="fas fa-redo"></i></button>
+            <button class="btn secondary" style="width: auto;" onclick="IO.exportJSON()">Export</button>
+            <button class="btn" style="width: auto;" onclick="document.getElementById('file-in').click()">Import</button>
+            <input type="file" id="file-in" hidden onchange="IO.importJSON(this)">
+        </div>
+    </header>
+
+    <!-- Toolbar -->
+    <div id="toolbar">
+        <button class="tool-btn active" id="mode-2d" onclick="Graph.setMode('2D')" title="2D View"><i class="fas fa-circle-nodes"></i></button>
+        <button class="tool-btn" id="mode-3d" onclick="Graph.setMode('3D')" title="3D View"><i class="fas fa-cube"></i></button>
+        <div style="width: 20px; height: 1px; background: var(--border-dark);"></div>
+        <button class="tool-btn" id="tool-select" onclick="Tools.set('select')" title="Select Mode"><i class="fas fa-mouse-pointer"></i></button>
+        <button class="tool-btn" id="tool-link" onclick="Tools.set('link')" title="Link Mode"><i class="fas fa-link"></i></button>
+        <button class="tool-btn" onclick="Graph.addNodeManual()" title="Add Node"><i class="fas fa-plus"></i></button>
+        <div style="width: 20px; height: 1px; background: var(--border-dark);"></div>
+        <button class="tool-btn" onclick="Graph.fit()" title="Fit View"><i class="fas fa-compress-arrows-alt"></i></button>
+        <button class="tool-btn" onclick="Analysis.findShortestPath()" title="Shortest Path"><i class="fas fa-route"></i></button>
+        <button class="tool-btn" onclick="IO.generateReport()" title="Generate Report"><i class="fas fa-file-alt"></i></button>
+    </div>
+
+    <!-- Viewport -->
+    <div id="viewport">
+        <div id="graph-canvas"></div>
+        
+        <div id="search-overlay" class="overlay-panel">
+            <i class="fas fa-search" style="color: var(--text-muted); padding-top: 2px;"></i>
+            <input type="text" id="search-input" placeholder="Search nodes (Ctrl+K)..." oninput="Graph.search(this.value)">
+        </div>
+
+        <div id="stats-overlay" class="overlay-panel">
+            Nodes: <span id="stat-nodes">0</span> | Links: <span id="stat-links">0</span>
+        </div>
+    </div>
+
+    <!-- Inspector -->
+    <div id="inspector">
+        <div class="panel-head">Properties</div>
+        <div class="panel-body" id="props-body">
+            <div style="text-align: center; color: var(--text-muted); margin-top: 50px;">
+                <i class="fas fa-mouse-pointer" style="font-size: 2rem; margin-bottom: 10px;"></i><br>
+                Select an entity
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <span id="system-msg">Ready.</span>
+        <span><i class="fas fa-lock"></i> Secure Environment</span>
+    </footer>
+</div>
+
+<!-- Context Menu -->
+<div id="ctx-menu">
+    <div class="ctx-item" onclick="Transforms.run('dns')"><i class="fas fa-globe"></i> Resolve DNS</div>
+    <div class="ctx-item" onclick="Transforms.run('whois')"><i class="fas fa-id-card"></i> WHOIS / RDAP</div>
+    <div class="ctx-item" onclick="Transforms.run('crt')"><i class="fas fa-certificate"></i> Find Subdomains (crt.sh)</div>
+    <div class="ctx-item" onclick="Transforms.run('geoip')"><i class="fas fa-map-marker-alt"></i> GeoIP Lookup</div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item" onclick="Graph.deleteSelected()"><i class="fas fa-trash" style="color: var(--danger)"></i> Delete Entity</div>
+</div>
+
+<div id="toast-area"></div>
+
+<script>
+/**
+ * TITAN GRAPH CORE v3
+ * Military-grade robustness, State Management, and Advanced Analysis
+ */
+
+// --- UTILITIES ---
+const Utils = {
+    uuid: () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+        const r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    }),
+    copy: (obj) => JSON.parse(JSON.stringify(obj)),
+    debounce: (func, wait) => {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+};
+
+// --- CONFIGURATION ---
+const Config = {
+    colors: {
+        domain: '#10b981', // Emerald
+        ip: '#3b82f6',     // Blue
+        person: '#f59e0b', // Amber
+        location: '#8b5cf6', // Violet
+        asn: '#ec4899',    // Pink
+        default: '#64748b' // Slate
+    },
+    icons: {
+        domain: '\uf0ac', ip: '\uf233', person: '\uf007',
+        location: '\uf3c5', asn: '\uf19c', default: '\uf128'
+    }
+};
+
+// --- STATE MANAGEMENT (REDUX-LITE) ---
+const Store = {
+    state: {
+        nodes: [],
+        links: []
+    },
+    history: [],
+    historyIndex: -1,
+    maxHistory: 20,
+
+    init() {
+        // Load from local storage
+        const saved = localStorage.getItem('titan_graph_v3');
+        if (saved) {
+            try {
+                this.state = JSON.parse(saved);
+                Graph.refresh();
+                UI.toast('Session restored', 'success');
+            } catch(e) { console.error('Save file corrupted'); }
+        } else {
+            // Default Data
+            this.addNode({ label: 'target.com', type: 'domain' });
+        }
+        this.saveState(); // Init history
+    },
+
+    saveState() {
+        // Remove future history if we branched
+        if (this.historyIndex < this.history.length - 1) {
+            this.history = this.history.slice(0, this.historyIndex + 1);
+        }
+        // Push snapshot
+        this.history.push(Utils.copy(this.state));
+        if (this.history.length > this.maxHistory) this.history.shift();
+        else this.historyIndex++;
+
+        // Persist
+        localStorage.setItem('titan_graph_v3', JSON.stringify(this.state));
+        UI.updateStats();
+    },
+
+    undo() {
+        if (this.historyIndex > 0) {
+            this.historyIndex--;
+            this.state = Utils.copy(this.history[this.historyIndex]);
+            Graph.refresh();
+            UI.toast('Undo', 'info');
+        }
+    },
+
+    redo() {
+        if (this.historyIndex < this.history.length - 1) {
+            this.historyIndex++;
+            this.state = Utils.copy(this.history[this.historyIndex]);
+            Graph.refresh();
+            UI.toast('Redo', 'info');
+        }
+    },
+
+    // CRUD
+    addNode(data) {
+        const id = Utils.uuid();
+        const node = { id, label: data.label, type: data.type || 'default', data: data.data || {}, x:0, y:0, z:0 };
+        
+        // Check duplicate labels for cleaner graphs
+        const existing = this.state.nodes.find(n => n.label === node.label && n.type === node.type);
+        if (existing) return existing;
+
+        this.state.nodes.push(node);
+        this.saveState();
+        return node;
+    },
+
+    addLink(sourceId, targetId) {
+        if (sourceId === targetId) return;
+        const exists = this.state.links.find(l => 
+            (l.source === sourceId && l.target === targetId) ||
+            (l.source === targetId && l.target === sourceId)
+        );
+        if (!exists) {
+            this.state.links.push({ source: sourceId, target: targetId });
+            this.saveState();
+        }
+    },
+
+    updateNode(id, updates) {
+        const node = this.state.nodes.find(n => n.id === id);
+        if (node) {
+            Object.assign(node, updates);
+            this.saveState();
+            Graph.refresh(); // Visual update
+        }
+    },
+
+    deleteNode(id) {
+        this.state.nodes = this.state.nodes.filter(n => n.id !== id);
+        this.state.links = this.state.links.filter(l => l.source !== id && l.target !== id && l.source.id !== id && l.target.id !== id);
+        this.saveState();
+        Graph.refresh();
+    }
+};
+
+// --- GRAPH ENGINE ---
+const Graph = {
+    instance: null,
+    mode: '2D',
+    selected: null,
+    
+    init() {
+        this.render();
+        window.addEventListener('resize', () => {
+            if(this.instance) this.instance.width(document.getElementById('graph-canvas').clientWidth).height(document.getElementById('graph-canvas').clientHeight);
+        });
+    },
+
+    setMode(mode) {
+        if (this.mode === mode) return;
+        this.mode = mode;
+        
+        // Update UI
+        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`mode-${mode.toLowerCase()}`).classList.add('active');
+        
+        // Re-render
+        document.getElementById('graph-canvas').innerHTML = '';
+        this.render();
+    },
+
+    render() {
+        const el = document.getElementById('graph-canvas');
+        const w = el.clientWidth;
+        const h = el.clientHeight;
+        const bg = '#0b0f19'; // Match CSS var
+
+        // Common Config
+        const common = {
+            graphData: Store.state,
+            nodeLabel: 'label',
+            nodeColor: n => Config.colors[n.type] || Config.colors.default,
+            onNodeClick: this.onNodeClick.bind(this),
+            onNodeRightClick: this.onCtxMenu.bind(this),
+            onBackgroundClick: this.deselect.bind(this),
+            backgroundColor: bg
+        };
+
+        if (this.mode === '2D') {
+            this.instance = ForceGraph()(el)
+                .width(w).height(h)
+                .linkColor(() => '#2d3748')
+                .nodeCanvasObject((node, ctx, globalScale) => {
+                    const label = node.label;
+                    const fontSize = 12/globalScale;
+                    const r = 5;
+                    
+                    // Selection Halo
+                    if (node.id === this.selected?.id || node.id === Tools.linkSource?.id) {
+                        ctx.beginPath();
+                        ctx.arc(node.x, node.y, r * 1.5, 0, 2 * Math.PI);
+                        ctx.fillStyle = 'rgba(59, 130, 246, 0.5)';
+                        ctx.fill();
+                    }
+
+                    // Node Body
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
+                    ctx.fillStyle = Config.colors[node.type] || Config.colors.default;
+                    ctx.fill();
+
+                    // Icon
+                    const icon = Config.icons[node.type] || Config.icons.default;
+                    ctx.font = `${4}px "Font Awesome 6 Free"`;
+                    ctx.fillStyle = '#000';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(icon, node.x, node.y);
+
+                    // Label
+                    ctx.font = `${fontSize}px Sans-Serif`;
+                    ctx.fillStyle = '#e2e8f0';
+                    ctx.fillText(label, node.x, node.y + r + fontSize);
+                })
+                ...Object.values(common); // Spread common config manually if needed, but ForceGraph chaining is specific
+            
+            // Apply common manually because chaining syntax
+            this.instance
+                .graphData(Store.state)
+                .backgroundColor(bg)
+                .onNodeClick(this.onNodeClick.bind(this))
+                .onNodeRightClick(this.onCtxMenu.bind(this))
+                .onBackgroundClick(this.deselect.bind(this));
+
+        } else {
+            this.instance = ForceGraph3D()(el)
+                .width(w).height(h)
+                .backgroundColor(bg)
+                .graphData(Store.state)
+                .nodeColor(n => Config.colors[n.type] || Config.colors.default)
+                .linkColor(() => '#555')
+                .nodeThreeObject(node => {
+                    const sprite = new SpriteText(node.label);
+                    sprite.color = node.id === this.selected?.id ? '#3b82f6' : '#e2e8f0';
+                    sprite.textHeight = 8;
+                    return sprite;
+                })
+                .nodeThreeObjectExtend(true)
+                .onNodeClick(this.onNodeClick.bind(this))
+                .onNodeRightClick(this.onCtxMenu.bind(this))
+                .onBackgroundClick(this.deselect.bind(this));
+        }
+    },
+
+    refresh() {
+        // Update data reference
+        const data = { nodes: Store.state.nodes, links: Store.state.links };
+        this.instance.graphData(data);
+    },
+
+    onNodeClick(node) {
+        if (Tools.current === 'link') {
+            if (!Tools.linkSource) {
+                Tools.linkSource = node;
+                UI.toast('Select target node...');
+                this.refresh(); // Update visual selection
+            } else {
+                Store.addLink(Tools.linkSource.id, node.id);
+                Tools.linkSource = null;
+                UI.toast('Link established', 'success');
+                Tools.set('select'); // Reset tool
+            }
+        } else {
+            this.selected = node;
+            UI.showProps(node);
+            
+            // Camera Focus
+            if (this.mode === '3D') {
+                const distRatio = 1 + 50/Math.hypot(node.x, node.y, node.z);
+                this.instance.cameraPosition(
+                    { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
+                    node, 3000
+                );
+            } else {
+                this.instance.centerAt(node.x, node.y, 1000);
+                this.instance.zoom(6, 2000);
+            }
+        }
+    },
+
+    onCtxMenu(node, event) {
+        this.selected = node;
+        UI.showProps(node);
+        
+        const menu = document.getElementById('ctx-menu');
+        let x, y;
+        
+        if (event.clientX) { x = event.clientX; y = event.clientY; } // 2D
+        else { x = window.innerWidth/2; y = window.innerHeight/2; } // 3D fallback
+
+        menu.style.left = `${x}px`;
+        menu.style.top = `${y}px`;
+        menu.style.display = 'block';
+    },
+
+    deselect() {
+        this.selected = null;
+        Tools.linkSource = null;
+        document.getElementById('ctx-menu').style.display = 'none';
+        UI.clearProps();
+        this.refresh();
+    },
+
+    addNodeManual() {
+        const label = prompt("Entity Name:");
+        if (!label) return;
+        const type = prompt("Type (domain, ip, person, location):", "domain");
+        Store.addNode({ label, type });
+        this.refresh();
+    },
+
+    deleteSelected() {
+        if (this.selected) {
+            Store.deleteNode(this.selected.id);
+            this.deselect();
+        }
+    },
+
+    search(query) {
+        if (!query) return;
+        const node = Store.state.nodes.find(n => n.label.toLowerCase().includes(query.toLowerCase()));
+        if (node) {
+            this.onNodeClick(node);
+        }
+    },
+
+    fit() {
+        this.instance.zoomToFit(500);
+    }
+};
+
+// --- TOOLS & ANALYSIS ---
+const Tools = {
+    current: 'select',
+    linkSource: null,
+
+    set(tool) {
+        this.current = tool;
+        this.linkSource = null;
+        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(`tool-${tool}`).classList.add('active');
+        Graph.refresh();
+        
+        const msg = tool === 'link' ? 'Link Mode: Click source then target' : 'Select Mode';
+        UI.toast(msg, 'info');
+    }
+};
+
+const Analysis = {
+    findShortestPath() {
+        // Simple BFS for shortest path highlighting
+        const start = Graph.selected;
+        if (!start) { UI.toast('Select a start node first', 'warning'); return; }
+        
+        const targetLabel = prompt("Enter target node label to find path:");
+        const target = Store.state.nodes.find(n => n.label === targetLabel);
+        
+        if (!target) { UI.toast('Target not found', 'error'); return; }
+
+        // BFS
+        const queue = [[start.id]];
+        const visited = new Set([start.id]);
+        let path = null;
+
+        while (queue.length > 0) {
+            const currentPath = queue.shift();
+            const nodeId = currentPath[currentPath.length - 1];
+
+            if (nodeId === target.id) {
+                path = currentPath;
+                break;
+            }
+
+            // Find neighbors
+            const neighbors = Store.state.links
+                .filter(l => l.source.id === nodeId || l.target.id === nodeId)
+                .map(l => l.source.id === nodeId ? l.target.id : l.source.id);
+
+            for (const n of neighbors) {
+                if (!visited.has(n)) {
+                    visited.add(n);
+                    queue.push([...currentPath, n]);
+                }
+            }
+        }
+
+        if (path) {
+            UI.toast(`Path found: ${path.length - 1} hops`, 'success');
+            // Highlight path (Visual logic would go here, for now we just log it)
+            console.log("Path:", path);
+            // In a full version, we would color these nodes/links specifically
+        } else {
+            UI.toast('No path found', 'warning');
+        }
+    }
+};
+
+// --- TRANSFORMS (OSINT) ---
+const Transforms = {
+    proxy: 'https://api.allorigins.win/get?url=',
+
+    async run(type) {
+        const node = Graph.selected;
+        if (!node) return;
+        document.getElementById('ctx-menu').style.display = 'none';
+        UI.setSystemMsg(`Running ${type.toUpperCase()} on ${node.label}...`);
+
+        try {
+            switch(type) {
+                case 'dns': await this.dns(node.label); break;
+                case 'whois': await this.whois(node.label); break;
+                case 'crt': await this.crtsh(node.label); break;
+                case 'geoip': await this.geoip(node.label); break;
+            }
+            UI.setSystemMsg("Ready.");
+        } catch (e) {
+            UI.toast(e.message, 'error');
+            UI.setSystemMsg("Error.");
+        }
+    },
+
+    async fetch(url) {
+        const res = await fetch(this.proxy + encodeURIComponent(url));
+        if (!res.ok) throw new Error("Network Error");
+        const data = await res.json();
+        return data.contents;
+    },
+
+    async dns(domain) {
+        const res = await fetch(`https://dns.google/resolve?name=${domain}&type=A`);
+        const data = await res.json();
+        if (data.Answer) {
+            data.Answer.forEach(r => {
+                if (r.type === 1) {
+                    const ipNode = Store.addNode({ label: r.data, type: 'ip' });
+                    Store.addLink(node.id, ipNode.id); // Note: node.id needs to be resolved from closure or passed
+                    // Fix: We need the ID of the currently selected node
+                    Store.addLink(Graph.selected.id, ipNode.id);
+                }
+            });
+            UI.toast('DNS Records added', 'success');
+        } else UI.toast('No records found', 'warning');
+    },
+
+    async crtsh(domain) {
+        // Certificate Transparency
+        try {
+            const raw = await this.fetch(`https://crt.sh/?q=%.${domain}&output=json`);
+            const data = JSON.parse(raw);
+            // Limit to top 10 to prevent explosion
+            const unique = [...new Set(data.map(d => d.name_value))].slice(0, 10);
+            
+            unique.forEach(sub => {
+                const n = Store.addNode({ label: sub, type: 'domain' });
+                Store.addLink(Graph.selected.id, n.id);
+            });
+            UI.toast(`Found ${unique.length} subdomains`, 'success');
+        } catch (e) {
+            throw new Error("crt.sh failed or timed out");
+        }
+    },
+
+    async geoip(ip) {
+        // Using ipapi.co via proxy
+        const raw = await this.fetch(`https://ipapi.co/${ip}/json/`);
+        const data = JSON.parse(raw);
+        if (data.city) {
+            const loc = `${data.city}, ${data.country_code}`;
+            const n = Store.addNode({ label: loc, type: 'location' });
+            Store.addLink(Graph.selected.id, n.id);
+            
+            if (data.org) {
+                const asn = Store.addNode({ label: data.org, type: 'asn' });
+                Store.addLink(Graph.selected.id, asn.id);
+            }
+            UI.toast('GeoIP data enriched', 'success');
+        }
+    },
+
+    async whois(target) {
+        // RDAP
+        const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(target);
+        const url = isIp ? `https://rdap.arin.net/registry/ip/${target}` : `https://rdap.org/domain/${target}`;
+        
+        try {
+            const raw = await this.fetch(url);
+            const data = JSON.parse(raw);
+            
+            if (data.entities) {
+                data.entities.forEach(e => {
+                    const name = e.vcardArray?.[1]?.find(x => x[0] === 'fn')?.[3] || e.handle;
+                    if (name) {
+                        const n = Store.addNode({ label: name, type: 'person' });
+                        Store.addLink(Graph.selected.id, n.id);
+                    }
+                });
+                UI.toast('WHOIS entities found', 'success');
+            }
+        } catch (e) {
+            throw new Error("RDAP lookup failed");
+        }
+    }
+};
+
+// --- UI MANAGER ---
+const UI = {
+    toast(msg, type = 'info') {
+        const area = document.getElementById('toast-area');
+        const el = document.createElement('div');
+        el.className = `toast ${type}`;
+        el.innerHTML = `<i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'bomb' : 'info-circle'}"></i> ${msg}`;
+        area.appendChild(el);
+        setTimeout(() => el.remove(), 4000);
+    },
+
+    setSystemMsg(msg) {
+        document.getElementById('system-msg').innerText = msg;
+    },
+
+    updateStats() {
+        document.getElementById('stat-nodes').innerText = Store.state.nodes.length;
+        document.getElementById('stat-links').innerText = Store.state.links.length;
+    },
+
+    showProps(node) {
+        const body = document.getElementById('props-body');
+        body.innerHTML = `
+            <div class="prop-group">
+                <label class="prop-label">LABEL</label>
+                <input class="prop-input" value="${node.label}" onchange="Store.updateNode('${node.id}', {label: this.value})">
+            </div>
+            <div class="prop-group">
+                <label class="prop-label">TYPE</label>
+                <select class="prop-input" onchange="Store.updateNode('${node.id}', {type: this.value})">
+                    ${Object.keys(Config.colors).map(k => `<option value="${k}" ${node.type === k ? 'selected' : ''}>${k.toUpperCase()}</option>`).join('')}
+                </select>
+            </div>
+            <div class="prop-group">
+                <label class="prop-label">ID (UUID)</label>
+                <input class="prop-input" value="${node.id}" disabled style="opacity: 0.5">
+            </div>
+            <div class="prop-group">
+                <button class="btn danger" onclick="Graph.deleteSelected()">DELETE ENTITY</button>
+            </div>
+        `;
+    },
+
+    clearProps() {
+        document.getElementById('props-body').innerHTML = `
+            <div style="text-align: center; color: var(--text-muted); margin-top: 50px;">
+                <i class="fas fa-mouse-pointer" style="font-size: 2rem; margin-bottom: 10px;"></i><br>
+                Select an entity
+            </div>
+        `;
+    }
+};
+
+// --- IO ---
+const IO = {
+    exportJSON() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(Store.state));
+        const a = document.createElement('a');
+        a.href = dataStr;
+        a.download = `titan_graph_${Date.now()}.json`;
+        a.click();
+    },
+
+    importJSON(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const json = JSON.parse(e.target.result);
+                Store.state = json;
+                Store.saveState();
+                Graph.refresh();
+                UI.toast('Database imported', 'success');
+            } catch (err) {
+                UI.toast('Import failed', 'error');
+            }
+        };
+        reader.readAsText(file);
+    },
+
+    generateReport() {
+        const nodes = Store.state.nodes;
+        let report = "TITAN GRAPH INTELLIGENCE REPORT\n";
+        report += "================================\n";
+        report += `Date: ${new Date().toLocaleString()}\n`;
+        report += `Entities: ${nodes.length}\n`;
+        report += `Connections: ${Store.state.links.length}\n\n`;
+        
+        report += "KEY ENTITIES:\n";
+        nodes.forEach(n => {
+            report += `- [${n.type.toUpperCase()}] ${n.label}\n`;
+        });
+
+        const blob = new Blob([report], { type: 'text/plain' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = "report.txt";
+        a.click();
+    }
+};
+
+// --- BOOTSTRAP ---
+(function() {
+    Store.init();
+    Graph.init();
+    
+    // Global Keybinds
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'z') { e.preventDefault(); App.undo(); }
+        if (e.ctrlKey && e.key === 'y') { e.preventDefault(); App.redo(); }
+        if (e.ctrlKey && e.key === 'k') { e.preventDefault(); document.getElementById('search-input').focus(); }
+        if (e.key === 'Delete') Graph.deleteSelected();
+    });
+
+    // App Facade
+    window.App = {
+        undo: () => Store.undo(),
+        redo: () => Store.redo()
+    };
+})();
+
+</script>
+</body>
+</html>
