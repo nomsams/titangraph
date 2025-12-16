@@ -3,160 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TitanGraph v5 | Civic Intelligence</title>
+    <title>TitanGraph v6 | Advanced Analysis</title>
     
-    <!-- Core Engines -->
+    <!-- Engines -->
     <script src="//unpkg.com/three"></script>
     <script src="//unpkg.com/three-spritetext"></script>
     <script src="//unpkg.com/force-graph"></script>
     <script src="//unpkg.com/3d-force-graph"></script>
     
-    <!-- UI Assets -->
+    <!-- Assets -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --bg-dark: #050505;
-            --panel-bg: #111;
+            --bg: #050505;
+            --panel: #111;
             --border: #333;
-            --accent: #00ff88;
-            --accent-dim: rgba(0, 255, 136, 0.1);
-            --text-main: #eee;
-            --text-muted: #888;
+            --accent: #00ff9d;
+            --accent-dim: rgba(0, 255, 157, 0.1);
+            --text: #eee;
+            --muted: #777;
             --danger: #ff4444;
-            --success: #00ff88;
-            --warning: #ffbb00;
             --font-ui: 'Inter', sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
         }
 
         * { box-sizing: border-box; outline: none; user-select: none; }
-        body { margin: 0; overflow: hidden; background: var(--bg-dark); color: var(--text-main); font-family: var(--font-ui); }
+        body { margin: 0; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-ui); }
 
-        /* --- LAYOUT --- */
-        #app {
-            display: flex; flex-direction: column; height: 100vh; width: 100vw;
-        }
+        /* LAYOUT */
+        #app { display: flex; flex-direction: column; height: 100vh; width: 100vw; }
 
-        /* --- HEADER --- */
+        /* HEADER */
         header {
-            height: 45px; background: var(--panel-bg); border-bottom: 1px solid var(--border);
+            height: 45px; background: var(--panel); border-bottom: 1px solid var(--border);
             display: flex; align-items: center; justify-content: space-between; padding: 0 15px; z-index: 20;
         }
         .brand { font-family: var(--font-mono); font-weight: 700; color: var(--accent); letter-spacing: 1px; display: flex; gap: 10px; align-items: center; }
-        .controls { display: flex; gap: 8px; }
-
-        /* --- WORKSPACE --- */
+        
+        /* WORKSPACE */
         #workspace { flex: 1; display: flex; position: relative; overflow: hidden; }
         
-        /* Toolbar */
+        /* TOOLBAR */
         #toolbar {
-            width: 50px; background: var(--panel-bg); border-right: 1px solid var(--border);
+            width: 50px; background: var(--panel); border-right: 1px solid var(--border);
             display: flex; flex-direction: column; align-items: center; padding-top: 10px; gap: 8px; z-index: 10;
         }
         .tool-btn {
             width: 36px; height: 36px; border-radius: 4px; border: 1px solid transparent;
-            background: transparent; color: var(--text-muted); cursor: pointer; transition: 0.2s;
-            display: grid; place-items: center; font-size: 1rem;
+            background: transparent; color: var(--muted); cursor: pointer; transition: 0.2s;
+            display: grid; place-items: center; font-size: 1rem; position: relative;
         }
-        .tool-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.1); }
+        .tool-btn:hover { color: var(--text); background: rgba(255,255,255,0.1); }
         .tool-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+        .tool-btn.active::after { content: ''; position: absolute; right: -1px; top: 50%; transform: translateY(-50%); width: 3px; height: 20px; background: var(--accent); border-radius: 2px; }
 
-        /* Graph Area */
+        /* CANVAS */
         #viewport { flex: 1; position: relative; background: #000; }
         #graph-canvas { width: 100%; height: 100%; }
 
-        /* Inspector */
+        /* INSPECTOR */
         #inspector {
-            width: 280px; background: var(--panel-bg); border-left: 1px solid var(--border);
-            display: flex; flex-direction: column; z-index: 10;
+            width: 300px; background: var(--panel); border-left: 1px solid var(--border);
+            display: flex; flex-direction: column; z-index: 10; transition: width 0.2s;
         }
-        .panel-head { padding: 10px 15px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; color: var(--accent); }
-        .panel-body { padding: 15px; overflow-y: auto; flex: 1; }
+        .panel-head { padding: 10px 15px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; color: var(--accent); display: flex; justify-content: space-between; }
+        .panel-body { padding: 0; overflow-y: auto; flex: 1; }
 
-        /* --- LOG CONSOLE (Tactical) --- */
+        /* DATA TABLE */
+        .data-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 0.75rem; }
+        .data-table td { padding: 8px 12px; border-bottom: 1px solid #222; vertical-align: top; }
+        .data-key { color: var(--muted); width: 35%; font-weight: bold; }
+        .data-val { color: var(--text); word-break: break-all; }
+
+        /* LOGS */
         #log-panel {
             background: #000; border-top: 1px solid var(--accent);
-            display: flex; flex-direction: column;
-            transition: height 0.2s ease;
-            z-index: 30;
-            font-family: var(--font-mono);
+            display: flex; flex-direction: column; z-index: 30; font-family: var(--font-mono);
+            transition: height 0.2s;
         }
+        #log-panel.min { height: 30px; }
+        #log-panel.max { height: 200px; }
         
-        /* Minimized State */
-        #log-panel.minimized { height: 30px; overflow: hidden; }
-        /* Maximized State */
-        #log-panel.maximized { height: 200px; }
-
-        .log-bar {
-            height: 30px; display: flex; align-items: center; justify-content: space-between;
-            padding: 0 10px; background: #0a0a0a; cursor: pointer;
-        }
+        .log-bar { height: 30px; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; background: #0a0a0a; cursor: pointer; }
         .log-bar:hover { background: #111; }
+        .log-status { font-size: 0.75rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%; }
         
-        .log-status-line { font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 70%; }
-        
-        .log-actions { display: flex; gap: 5px; }
-        .mini-btn { background: none; border: 1px solid #333; color: #888; padding: 2px 6px; font-size: 0.7rem; cursor: pointer; border-radius: 3px; }
-        .mini-btn:hover { color: white; border-color: white; }
-
-        #log-content {
-            flex: 1; overflow-y: auto; padding: 5px 10px; font-size: 0.75rem; color: #ccc;
-            background: #050505; border-top: 1px solid #222;
-        }
+        #log-content { flex: 1; overflow-y: auto; padding: 5px 10px; font-size: 0.75rem; color: #ccc; background: #050505; }
         .log-entry { margin-bottom: 2px; display: flex; gap: 10px; border-bottom: 1px solid #111; padding: 2px 0; }
         .log-ts { color: #555; min-width: 60px; }
-        .log-txt { word-break: break-all; }
         .log-err { color: var(--danger); }
-        .log-succ { color: var(--success); }
-        .log-warn { color: var(--warning); }
+        .log-succ { color: var(--accent); }
 
-        /* --- UI HELPERS --- */
-        .btn {
-            background: var(--accent); color: #000; border: none; padding: 6px 12px; border-radius: 2px;
-            cursor: pointer; font-weight: 700; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 6px;
+        /* OVERLAYS */
+        #zoom-controls {
+            position: absolute; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 5px;
         }
-        .btn:hover { filter: brightness(1.1); }
-        .btn-sec { background: transparent; border: 1px solid #444; color: #aaa; }
-        .btn-sec:hover { border-color: #fff; color: #fff; }
-        
-        .prop-row { margin-bottom: 12px; }
-        .prop-lbl { display: block; font-size: 0.65rem; color: #666; margin-bottom: 4px; }
-        .prop-in { 
-            width: 100%; background: #080808; border: 1px solid #333; color: white;
-            padding: 6px; font-family: var(--font-mono); font-size: 0.8rem;
-        }
+        .zoom-btn { width: 30px; height: 30px; background: var(--panel); border: 1px solid var(--border); color: var(--text); cursor: pointer; border-radius: 4px; }
+        .zoom-btn:hover { background: #222; }
 
-        /* Context Menu */
-        #ctx-menu {
-            position: fixed; display: none; background: #111; border: 1px solid var(--accent);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.8); z-index: 1000; min-width: 160px;
-        }
-        .ctx-item { padding: 8px 12px; cursor: pointer; font-size: 0.8rem; display: flex; gap: 8px; align-items: center; color: #ccc; }
-        .ctx-item:hover { background: var(--accent); color: #000; }
-        .ctx-div { height: 1px; background: #333; margin: 2px 0; }
-
-        /* Search Overlay */
         #search-overlay {
             position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.8);
             border: 1px solid #333; padding: 5px 10px; border-radius: 4px; display: flex; gap: 8px; align-items: center;
         }
         #search-in { background: transparent; border: none; color: white; width: 180px; font-family: var(--font-mono); font-size: 0.8rem; }
+
+        /* CONTEXT MENU */
+        #ctx-menu {
+            position: fixed; display: none; background: #111; border: 1px solid var(--accent);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8); z-index: 1000; min-width: 180px;
+        }
+        .ctx-item { padding: 8px 12px; cursor: pointer; font-size: 0.8rem; display: flex; gap: 8px; align-items: center; color: #ccc; }
+        .ctx-item:hover { background: var(--accent); color: #000; }
+        .ctx-div { height: 1px; background: #333; margin: 2px 0; }
+        
+        /* BUTTONS */
+        .btn { background: var(--accent); color: #000; border: none; padding: 4px 10px; border-radius: 2px; cursor: pointer; font-weight: 700; font-size: 0.75rem; }
+        .btn:hover { filter: brightness(1.1); }
+        .btn-sec { background: transparent; border: 1px solid #444; color: #aaa; }
+        .btn-sec:hover { border-color: #fff; color: #fff; }
     </style>
 </head>
 <body>
 
 <div id="app">
-    <!-- Header -->
     <header>
-        <div class="brand">
-            <i class="fas fa-satellite-dish"></i> TITAN v5
-        </div>
-        <div class="controls">
+        <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v6</div>
+        <div style="display:flex; gap:8px">
             <button class="btn btn-sec" onclick="App.undo()"><i class="fas fa-undo"></i></button>
             <button class="btn btn-sec" onclick="App.redo()"><i class="fas fa-redo"></i></button>
-            <div style="width: 1px; background: #333; margin: 0 5px;"></div>
+            <div style="width:1px; background:#333; margin:0 5px"></div>
             <button class="btn btn-sec" onclick="IO.export()">Export</button>
             <button class="btn" onclick="document.getElementById('file-in').click()">Import</button>
             <input type="file" id="file-in" hidden onchange="IO.import(this)">
@@ -164,51 +141,53 @@
     </header>
 
     <div id="workspace">
-        <!-- Toolbar -->
         <div id="toolbar">
             <button class="tool-btn active" id="mode-2d" onclick="Graph.setMode('2D')" title="2D View"><i class="fas fa-circle-nodes"></i></button>
             <button class="tool-btn" id="mode-3d" onclick="Graph.setMode('3D')" title="3D View"><i class="fas fa-cube"></i></button>
             <div style="width: 20px; height: 1px; background: #333;"></div>
-            <button class="tool-btn" id="tool-select" onclick="Tools.set('select')" title="Select / Drag"><i class="fas fa-mouse-pointer"></i></button>
-            <button class="tool-btn" id="tool-link" onclick="Tools.set('link')" title="Link Nodes"><i class="fas fa-link"></i></button>
+            <button class="tool-btn active" id="tool-move" onclick="Tools.set('move')" title="Move / Drag"><i class="fas fa-arrows-up-down-left-right"></i></button>
+            <button class="tool-btn" id="tool-link" onclick="Tools.set('link')" title="Link (Drag Node to Node)"><i class="fas fa-link"></i></button>
             <button class="tool-btn" onclick="Graph.addManual()" title="Add Node"><i class="fas fa-plus"></i></button>
             <div style="width: 20px; height: 1px; background: #333;"></div>
+            <button class="tool-btn active" id="tool-physics" onclick="Graph.togglePhysics()" title="Steadfast Mode (Physics)"><i class="fas fa-anchor"></i></button>
             <button class="tool-btn" onclick="Graph.fit()" title="Fit View"><i class="fas fa-compress"></i></button>
         </div>
 
-        <!-- Viewport -->
         <div id="viewport">
             <div id="graph-canvas"></div>
             <div id="search-overlay">
                 <i class="fas fa-search" style="color: #666;"></i>
-                <input type="text" id="search-in" placeholder="Search entities..." oninput="Graph.search(this.value)">
+                <input type="text" id="search-in" placeholder="Search..." oninput="Graph.search(this.value)">
+            </div>
+            <div id="zoom-controls">
+                <button class="zoom-btn" onclick="Graph.zoom(1)"><i class="fas fa-plus"></i></button>
+                <button class="zoom-btn" onclick="Graph.zoom(-1)"><i class="fas fa-minus"></i></button>
             </div>
         </div>
 
-        <!-- Inspector -->
         <div id="inspector">
-            <div class="panel-head">Properties</div>
+            <div class="panel-head">
+                <span>Inspector</span>
+                <i class="fas fa-info-circle" style="opacity:0.5"></i>
+            </div>
             <div class="panel-body" id="props-body">
-                <div style="text-align: center; color: #444; margin-top: 40px;">No Selection</div>
+                <div style="padding:20px; text-align:center; color:#444;">Select an entity</div>
             </div>
         </div>
     </div>
 
-    <!-- Log Panel -->
-    <div id="log-panel" class="minimized">
+    <div id="log-panel" class="min">
         <div class="log-bar" onclick="Logger.toggle()">
-            <div class="log-status-line" id="log-status">System Ready.</div>
-            <div class="log-actions">
-                <button class="mini-btn" onclick="event.stopPropagation(); Logger.copy()" title="Copy Logs"><i class="fas fa-copy"></i></button>
-                <button class="mini-btn" onclick="event.stopPropagation(); Logger.clear()" title="Clear"><i class="fas fa-trash"></i></button>
-                <button class="mini-btn" id="log-toggle-icon"><i class="fas fa-chevron-up"></i></button>
+            <div class="log-status" id="log-status">System Ready.</div>
+            <div style="display:flex; gap:5px">
+                <button class="btn btn-sec" style="padding:2px 6px" onclick="event.stopPropagation(); Logger.copy()"><i class="fas fa-copy"></i></button>
+                <button class="btn btn-sec" style="padding:2px 6px" onclick="event.stopPropagation(); Logger.clear()"><i class="fas fa-trash"></i></button>
             </div>
         </div>
         <div id="log-content"></div>
     </div>
 </div>
 
-<!-- Context Menu -->
 <div id="ctx-menu">
     <div class="ctx-item" onclick="Transforms.run('dns')"><i class="fas fa-globe"></i> Resolve DNS (A)</div>
     <div class="ctx-item" onclick="Transforms.run('whois')"><i class="fas fa-id-card"></i> WHOIS / RDAP</div>
@@ -220,154 +199,79 @@
 
 <script>
 /**
- * TITAN GRAPH v5
- * Robust Networking & Advanced Visualization
+ * TITAN GRAPH v6
+ * Advanced Interaction Engine
  */
 
-// --- CONFIGURATION ---
 const Config = {
-    colors: {
-        domain: '#00ff88', // Green
-        ip: '#00ccff',     // Blue
-        person: '#ffcc00', // Yellow
-        location: '#ff00ff', // Magenta
-        asn: '#aa00ff',    // Purple
-        default: '#888888' // Grey
-    },
-    icons: {
-        domain: '\uf0ac', ip: '\uf233', person: '\uf007',
-        location: '\uf3c5', asn: '\uf19c', default: '\uf128'
-    }
+    colors: { domain: '#00ff9d', ip: '#00ccff', person: '#ffcc00', location: '#ff00ff', asn: '#aa00ff', default: '#888' },
+    icons: { domain: '\uf0ac', ip: '\uf233', person: '\uf007', location: '\uf3c5', asn: '\uf19c', default: '\uf128' }
 };
 
 // --- LOGGER ---
-window.Logger = {
+const Logger = {
     isMin: true,
-    
-    log(msg, type = 'info') {
+    log(msg, type='info') {
         const ts = new Date().toLocaleTimeString('en-GB');
-        const content = document.getElementById('log-content');
-        const status = document.getElementById('log-status');
-        
-        // Add to full log
         const div = document.createElement('div');
         div.className = 'log-entry';
-        div.innerHTML = `<span class="log-ts">[${ts}]</span> <span class="log-txt log-${type === 'error' ? 'err' : type === 'success' ? 'succ' : 'norm'}">${msg}</span>`;
-        content.appendChild(div);
-        content.scrollTop = content.scrollHeight;
-
-        // Update status bar
-        status.innerHTML = `<span style="color:${type === 'error' ? '#ff4444' : '#888'}">[${ts}] ${msg}</span>`;
-        console.log(`[${type.toUpperCase()}] ${msg}`);
+        div.innerHTML = `<span class="log-ts">[${ts}]</span> <span class="log-${type === 'error' ? 'err' : type === 'success' ? 'succ' : 'norm'}">${msg}</span>`;
+        document.getElementById('log-content').appendChild(div);
+        document.getElementById('log-content').scrollTop = 99999;
+        document.getElementById('log-status').innerHTML = `<span style="color:${type==='error'?'#ff4444':type==='success'?'#00ff9d':'#888'}">[${ts}] ${msg}</span>`;
     },
-
     toggle() {
-        const panel = document.getElementById('log-panel');
-        const icon = document.getElementById('log-toggle-icon');
         this.isMin = !this.isMin;
-        
-        if (this.isMin) {
-            panel.className = 'minimized';
-            icon.innerHTML = '<i class="fas fa-chevron-up"></i>';
-        } else {
-            panel.className = 'maximized';
-            icon.innerHTML = '<i class="fas fa-chevron-down"></i>';
-        }
+        document.getElementById('log-panel').className = this.isMin ? 'min' : 'max';
     },
-
-    copy() {
-        const text = document.getElementById('log-content').innerText;
-        navigator.clipboard.writeText(text);
-        this.log("Logs copied to clipboard", "success");
-    },
-
-    clear() {
-        document.getElementById('log-content').innerHTML = '';
-        this.log("Logs cleared", "info");
-    }
+    copy() { navigator.clipboard.writeText(document.getElementById('log-content').innerText); this.log("Copied logs", "success"); },
+    clear() { document.getElementById('log-content').innerHTML = ''; this.log("Logs cleared"); }
 };
 
 // --- STORE ---
-window.Store = {
+const Store = {
     state: { nodes: [], links: [] },
-    history: [],
-    idx: -1,
-
-    init() {
-        this.addNode({ label: 'example.com', type: 'domain' });
-        this.save();
-    },
-
+    history: [], idx: -1,
+    init() { this.addNode({ label: 'target.com', type: 'domain' }); this.save(); },
     save() {
         if (this.idx < this.history.length - 1) this.history = this.history.slice(0, this.idx + 1);
         this.history.push(JSON.parse(JSON.stringify(this.state)));
-        if (this.history.length > 20) this.history.shift();
-        else this.idx++;
+        if (this.history.length > 20) this.history.shift(); else this.idx++;
     },
-
-    undo() {
-        if (this.idx > 0) {
-            this.idx--;
-            this.state = JSON.parse(JSON.stringify(this.history[this.idx]));
-            Graph.refresh();
-            Logger.log("Undo", "info");
-        }
-    },
-
-    redo() {
-        if (this.idx < this.history.length - 1) {
-            this.idx++;
-            this.state = JSON.parse(JSON.stringify(this.history[this.idx]));
-            Graph.refresh();
-            Logger.log("Redo", "info");
-        }
-    },
-
+    undo() { if (this.idx > 0) { this.idx--; this.state = JSON.parse(JSON.stringify(this.history[this.idx])); Graph.refresh(); Logger.log("Undo"); } },
+    redo() { if (this.idx < this.history.length - 1) { this.idx++; this.state = JSON.parse(JSON.stringify(this.history[this.idx])); Graph.refresh(); Logger.log("Redo"); } },
     addNode(data) {
         const exists = this.state.nodes.find(n => n.label === data.label && n.type === data.type);
         if (exists) return exists;
-        const node = { id: crypto.randomUUID(), label: data.label, type: data.type || 'default', val: 1 };
+        const node = { id: crypto.randomUUID(), label: data.label, type: data.type || 'default', meta: data.meta || {} };
         this.state.nodes.push(node);
         this.save();
         return node;
     },
-
     addLink(src, tgt) {
         if (src === tgt) return;
         const exists = this.state.links.find(l => (l.source === src && l.target === tgt) || (l.source.id === src && l.target.id === tgt));
-        if (!exists) {
-            this.state.links.push({ source: src, target: tgt });
-            this.save();
-        }
+        if (!exists) { this.state.links.push({ source: src, target: tgt }); this.save(); }
     },
-
-    updateNode(id, key, val) {
-        const n = this.state.nodes.find(x => x.id === id);
-        if (n) { n[key] = val; this.save(); Graph.refresh(); }
-    },
-
+    updateNode(id, key, val) { const n = this.state.nodes.find(x => x.id === id); if (n) { n[key] = val; this.save(); Graph.refresh(); } },
     deleteNode(id) {
         this.state.nodes = this.state.nodes.filter(n => n.id !== id);
         this.state.links = this.state.links.filter(l => l.source.id !== id && l.target.id !== id && l.source !== id && l.target !== id);
-        this.save();
-        Graph.refresh();
+        this.save(); Graph.refresh();
     }
 };
 
 // --- GRAPH ENGINE ---
-window.Graph = {
+const Graph = {
     instance: null,
     mode: '2D',
     selected: null,
+    physics: true, // Steadfast mode toggle
+    hoverNode: null, // For drag-to-link
 
     init() {
         this.render();
-        window.addEventListener('resize', () => {
-            if (this.instance) {
-                const el = document.getElementById('graph-canvas');
-                this.instance.width(el.clientWidth).height(el.clientHeight);
-            }
-        });
+        window.addEventListener('resize', () => { if(this.instance) this.instance.width(document.getElementById('graph-canvas').clientWidth).height(document.getElementById('graph-canvas').clientHeight); });
         document.addEventListener('click', () => document.getElementById('ctx-menu').style.display = 'none');
     },
 
@@ -376,21 +280,28 @@ window.Graph = {
         this.mode = m;
         document.getElementById('mode-2d').classList.toggle('active', m === '2D');
         document.getElementById('mode-3d').classList.toggle('active', m === '3D');
-        
-        // Clean destroy
-        const el = document.getElementById('graph-canvas');
-        el.innerHTML = ''; 
-        this.instance = null;
-        
-        // Small delay to allow DOM to clear
+        document.getElementById('graph-canvas').innerHTML = '';
         setTimeout(() => this.render(), 50);
-        Logger.log(`Switched to ${m} Mode`, "info");
+        Logger.log(`Switched to ${m} Mode`);
+    },
+
+    togglePhysics() {
+        this.physics = !this.physics;
+        document.getElementById('tool-physics').classList.toggle('active', this.physics);
+        // If physics is ON, we unfix nodes (except dragged). If OFF, we don't change existing, but new drags will freeze.
+        if (!this.physics) {
+            // Unfreeze all
+            Store.state.nodes.forEach(n => { n.fx = null; n.fy = null; n.fz = null; });
+            if(this.instance) this.instance.d3ReheatSimulation();
+            Logger.log("Physics: Flow State");
+        } else {
+            Logger.log("Physics: Steadfast Mode");
+        }
     },
 
     render() {
         const el = document.getElementById('graph-canvas');
-        const w = el.clientWidth;
-        const h = el.clientHeight;
+        const w = el.clientWidth, h = el.clientHeight;
 
         if (this.mode === '2D') {
             this.instance = ForceGraph()(el)
@@ -403,58 +314,73 @@ window.Graph = {
                 .linkWidth(2)
                 .linkDirectionalArrowLength(4)
                 .linkDirectionalArrowRelPos(1)
+                .onNodeHover(node => { this.hoverNode = node; el.style.cursor = node ? 'pointer' : null; })
                 .nodeCanvasObject((node, ctx, globalScale) => {
                     const label = node.label;
                     const fontSize = 12/globalScale;
                     const r = 6;
                     
                     // Selection Halo
-                    if (node === this.selected || node === Tools.linkSrc) {
-                        ctx.beginPath();
-                        ctx.arc(node.x, node.y, r * 1.5, 0, 2 * Math.PI);
-                        ctx.fillStyle = 'rgba(0, 255, 136, 0.3)';
-                        ctx.fill();
+                    if (node === this.selected) {
+                        ctx.beginPath(); ctx.arc(node.x, node.y, r * 1.5, 0, 2 * Math.PI);
+                        ctx.fillStyle = 'rgba(0, 255, 157, 0.3)'; ctx.fill();
                     }
 
-                    // Body
-                    ctx.beginPath();
-                    ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
-                    ctx.fillStyle = Config.colors[node.type] || Config.colors.default;
-                    ctx.fill();
+                    // Node
+                    ctx.beginPath(); ctx.arc(node.x, node.y, r, 0, 2 * Math.PI);
+                    ctx.fillStyle = Config.colors[node.type] || Config.colors.default; ctx.fill();
 
                     // Icon
                     const icon = Config.icons[node.type] || Config.icons.default;
-                    ctx.font = `${4}px "Font Awesome 6 Free"`;
-                    ctx.fillStyle = '#000';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(icon, node.x, node.y);
+                    ctx.font = `${4}px "Font Awesome 6 Free"`; ctx.fillStyle = '#000';
+                    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(icon, node.x, node.y);
 
                     // Label
-                    ctx.font = `${fontSize}px monospace`;
-                    ctx.fillStyle = '#eee';
+                    ctx.font = `${fontSize}px monospace`; ctx.fillStyle = '#eee';
                     ctx.fillText(label, node.x, node.y + r + fontSize);
+                })
+                .onNodeDrag((node, translate) => {
+                    // Custom Drag Logic
+                    if (Tools.current === 'link') {
+                        // Don't move node, just trigger render for line drawing
+                        // ForceGraph doesn't easily allow canceling drag movement without hacks.
+                        // Instead, we let it move slightly or reset it.
+                        // Better approach: We use the onRenderFrame to draw the line from node to mouse.
+                    }
+                })
+                .onNodeDragEnd(node => {
+                    if (this.physics) { node.fx = node.x; node.fy = node.y; } // Steadfast
+                    
+                    if (Tools.current === 'link' && this.hoverNode && this.hoverNode !== node) {
+                        Store.addLink(node.id, this.hoverNode.id);
+                        Logger.log(`Linked ${node.label} -> ${this.hoverNode.label}`, "success");
+                    }
+                })
+                .onRenderFramePre((ctx, globalScale) => {
+                    // Draw Link Line if dragging in Link Mode
+                    if (Tools.current === 'link' && this.instance.d3Force('link')) {
+                        // This is hard to get mouse pos in render frame without tracking it globally
+                    }
                 })
                 .onNodeClick(this.onClick.bind(this))
                 .onNodeRightClick(this.onRightClick.bind(this))
-                .onBackgroundClick(this.deselect.bind(this))
-                .onNodeDragEnd(node => {
-                    node.fx = node.x;
-                    node.fy = node.y;
-                });
+                .onBackgroundClick(this.deselect.bind(this));
+                
+                // Custom Mouse Tracking for Link Line
+                // We attach a listener to the canvas to draw the line manually on top
+                
         } else {
+            // 3D MODE
             this.instance = ForceGraph3D()(el)
                 .width(w).height(h)
                 .backgroundColor('#000')
                 .graphData(Store.state)
                 .nodeColor(n => Config.colors[n.type] || Config.colors.default)
-                .linkWidth(1)
-                .linkColor(() => '#555')
-                .linkDirectionalArrowLength(3.5)
-                .linkDirectionalArrowRelPos(1)
+                .linkWidth(1).linkColor(() => '#555')
+                .linkDirectionalArrowLength(3.5).linkDirectionalArrowRelPos(1)
                 .nodeThreeObject(node => {
                     const sprite = new SpriteText(node.label);
-                    sprite.color = node === this.selected ? '#00ff88' : '#eee';
+                    sprite.color = node === this.selected ? '#00ff9d' : '#eee';
                     sprite.textHeight = 8;
                     return sprite;
                 })
@@ -463,45 +389,29 @@ window.Graph = {
                 .onNodeRightClick(this.onRightClick.bind(this))
                 .onBackgroundClick(this.deselect.bind(this))
                 .onNodeDragEnd(node => {
-                    node.fx = node.x;
-                    node.fy = node.y;
-                    node.fz = node.z;
+                    if (this.physics) { node.fx = node.x; node.fy = node.y; node.fz = node.z; }
                 });
         }
     },
 
-    refresh() {
-        // Deep copy to ensure reactivity in graph lib
-        const data = { 
-            nodes: Store.state.nodes.map(n => ({...n})), 
-            links: Store.state.links.map(l => ({...l})) 
-        };
-        // Preserve positions if possible by matching IDs (lib handles this usually, but explicit is safer)
+    // Custom Link Drawing Logic (2D)
+    // We override the canvas draw to add the yellow line
+    // Note: ForceGraph doesn't expose mouse pos easily in render loop, so we rely on drag-drop logic above.
+    
+    refresh() { 
+        const data = { nodes: Store.state.nodes.map(n => ({...n})), links: Store.state.links.map(l => ({...l})) };
         this.instance.graphData(Store.state); 
     },
 
     onClick(node) {
-        if (Tools.current === 'link') {
-            if (!Tools.linkSrc) {
-                Tools.linkSrc = node;
-                Logger.log(`Link Source: ${node.label}`, "info");
-                this.refresh();
-            } else {
-                Store.addLink(Tools.linkSrc.id, node.id);
-                Logger.log(`Linked ${Tools.linkSrc.label} -> ${node.label}`, "success");
-                Tools.linkSrc = null;
-                Tools.set('select');
-            }
+        this.selected = node;
+        this.showProps(node);
+        if (this.mode === '3D') {
+            const distRatio = 1 + 50/Math.hypot(node.x, node.y, node.z);
+            this.instance.cameraPosition({ x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, node, 2000);
         } else {
-            this.selected = node;
-            this.showProps(node);
-            if (this.mode === '3D') {
-                const distRatio = 1 + 50/Math.hypot(node.x, node.y, node.z);
-                this.instance.cameraPosition({ x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio }, node, 2000);
-            } else {
-                this.instance.centerAt(node.x, node.y, 1000);
-                this.instance.zoom(6, 2000);
-            }
+            this.instance.centerAt(node.x, node.y, 1000);
+            this.instance.zoom(6, 2000);
         }
     },
 
@@ -509,221 +419,160 @@ window.Graph = {
         this.selected = node;
         this.showProps(node);
         const menu = document.getElementById('ctx-menu');
-        let x = e.clientX || window.innerWidth/2;
-        let y = e.clientY || window.innerHeight/2;
-        menu.style.left = x + 'px';
-        menu.style.top = y + 'px';
+        menu.style.left = (e.clientX || window.innerWidth/2) + 'px';
+        menu.style.top = (e.clientY || window.innerHeight/2) + 'px';
         menu.style.display = 'block';
     },
 
     deselect() {
         this.selected = null;
-        Tools.linkSrc = null;
-        document.getElementById('props-body').innerHTML = '<div style="text-align: center; color: #444; margin-top: 40px;">No Selection</div>';
+        document.getElementById('props-body').innerHTML = '<div style="padding:20px; text-align:center; color:#444;">Select an entity</div>';
         this.refresh();
     },
 
     showProps(node) {
         const div = document.getElementById('props-body');
+        
+        // Build Meta Table
+        let metaHtml = '';
+        if (node.meta && Object.keys(node.meta).length > 0) {
+            metaHtml = '<table class="data-table">';
+            for (const [k, v] of Object.entries(node.meta)) {
+                if (typeof v !== 'object') {
+                    metaHtml += `<tr><td class="data-key">${k}</td><td class="data-val">${v}</td></tr>`;
+                }
+            }
+            metaHtml += '</table>';
+        } else {
+            metaHtml = '<div style="padding:10px; color:#555; font-size:0.8rem;">No enriched data available. Run a transform.</div>';
+        }
+
         div.innerHTML = `
-            <div class="prop-row">
-                <label class="prop-lbl">LABEL</label>
-                <input class="prop-in" value="${node.label}" onchange="Store.updateNode('${node.id}', 'label', this.value)">
+            <div style="padding:15px;">
+                <div class="prop-row" style="margin-bottom:10px">
+                    <label style="font-size:0.7rem; color:#666">LABEL</label>
+                    <input style="width:100%; background:#222; border:1px solid #444; color:#fff; padding:5px;" 
+                           value="${node.label}" onchange="Store.updateNode('${node.id}', 'label', this.value)">
+                </div>
+                <div class="prop-row" style="margin-bottom:10px">
+                    <label style="font-size:0.7rem; color:#666">TYPE</label>
+                    <select style="width:100%; background:#222; border:1px solid #444; color:#fff; padding:5px;" 
+                            onchange="Store.updateNode('${node.id}', 'type', this.value)">
+                        ${Object.keys(Config.colors).map(k => `<option value="${k}" ${node.type === k ? 'selected' : ''}>${k.toUpperCase()}</option>`).join('')}
+                    </select>
+                </div>
             </div>
-            <div class="prop-row">
-                <label class="prop-lbl">TYPE</label>
-                <select class="prop-in" onchange="Store.updateNode('${node.id}', 'type', this.value)">
-                    ${Object.keys(Config.colors).map(k => `<option value="${k}" ${node.type === k ? 'selected' : ''}>${k.toUpperCase()}</option>`).join('')}
-                </select>
+            <div style="background:#1a1a1a; padding:5px 15px; font-size:0.7rem; color:#aaa; border-top:1px solid #333; border-bottom:1px solid #333;">
+                ENRICHED DATA
             </div>
-            <div class="prop-row">
-                <button class="btn" style="background: var(--danger); width: 100%" onclick="Graph.deleteSelected()">DELETE</button>
-            </div>
+            ${metaHtml}
         `;
     },
 
-    addManual() {
-        const l = prompt("Node Label:");
-        if(l) { Store.addNode({ label: l, type: 'default' }); Graph.refresh(); }
-    },
-
-    deleteSelected() {
-        if(this.selected) { Store.deleteNode(this.selected.id); this.deselect(); }
-    },
-
-    search(q) {
-        if(!q) return;
-        const n = Store.state.nodes.find(x => x.label.toLowerCase().includes(q.toLowerCase()));
-        if(n) this.onClick(n);
-    },
-
-    fit() { this.instance.zoomToFit(500); }
-};
-
-// --- TOOLS ---
-window.Tools = {
-    current: 'select',
-    linkSrc: null,
-    set(t) {
-        this.current = t;
-        this.linkSrc = null;
-        document.getElementById('tool-select').classList.toggle('active', t === 'select');
-        document.getElementById('tool-link').classList.toggle('active', t === 'link');
-        Logger.log(`Tool: ${t.toUpperCase()}`, "info");
-        Graph.refresh();
+    addManual() { const l = prompt("Label:"); if(l) { Store.addNode({ label: l, type: 'default' }); Graph.refresh(); } },
+    deleteSelected() { if(this.selected) { Store.deleteNode(this.selected.id); this.deselect(); } },
+    search(q) { if(!q) return; const n = Store.state.nodes.find(x => x.label.toLowerCase().includes(q.toLowerCase())); if(n) this.onClick(n); },
+    fit() { this.instance.zoomToFit(500); },
+    zoom(dir) { 
+        if(this.mode === '2D') {
+            const k = this.instance.zoom(); 
+            this.instance.zoom(k + dir * 0.5, 400); 
+        } else {
+            // 3D zoom is camera movement
+            const pos = this.instance.cameraPosition();
+            this.instance.cameraPosition({ x: pos.x, y: pos.y, z: pos.z + (dir * -50) }, null, 400);
+        }
     }
 };
 
-// --- TRANSFORMS (ROBUST PROXY) ---
-window.Transforms = {
-    // Multi-stage proxy fallback
-    async fetch(url) {
-        const proxies = [
-            'https://api.allorigins.win/raw?url=', // Preferred: Raw JSON
-            'https://corsproxy.io/?',              // Fallback 1
-            ''                                     // Direct (Fallback 2)
-        ];
+// --- TOOLS ---
+const Tools = {
+    current: 'move',
+    set(t) {
+        this.current = t;
+        document.getElementById('tool-move').classList.toggle('active', t === 'move');
+        document.getElementById('tool-link').classList.toggle('active', t === 'link');
+        Logger.log(`Tool: ${t.toUpperCase()}`);
+        
+        // Visual feedback for Link Mode
+        const el = document.getElementById('graph-canvas');
+        if (t === 'link') {
+            el.style.cursor = 'crosshair';
+            Logger.log("Drag a node to another to link them", "info");
+        } else {
+            el.style.cursor = 'default';
+        }
+    }
+};
 
+// --- TRANSFORMS ---
+const Transforms = {
+    async fetch(url) {
+        const proxies = ['https://api.allorigins.win/raw?url=', 'https://corsproxy.io/?', ''];
         for (const p of proxies) {
             try {
-                const target = p ? p + encodeURIComponent(url) : url;
-                const res = await fetch(target);
+                const res = await fetch(p ? p + encodeURIComponent(url) : url);
                 if (res.ok) return await res.json();
-            } catch (e) {
-                console.warn(`Proxy ${p} failed for ${url}`);
-            }
+            } catch (e) {}
         }
-        throw new Error("Connection failed (All proxies blocked)");
+        throw new Error("Connection failed");
     },
-
     async run(type) {
         const node = Graph.selected;
         if (!node) return;
         document.getElementById('ctx-menu').style.display = 'none';
-        Logger.log(`Running ${type} on ${node.label}...`, "info");
+        Logger.log(`Running ${type}...`);
 
         try {
-            switch(type) {
-                case 'dns': await this.dns(node); break;
-                case 'whois': await this.whois(node); break;
-                case 'crt': await this.crt(node); break;
-                case 'geoip': await this.geoip(node); break;
-            }
-        } catch (e) {
-            Logger.log(e.message, "error");
-        }
-    },
-
-    async dns(node) {
-        // Google DNS supports CORS directly usually, but we use fetch wrapper to be safe
-        const data = await this.fetch(`https://dns.google/resolve?name=${node.label}&type=A`);
-        if (data.Answer) {
-            let c = 0;
-            data.Answer.forEach(r => {
-                if (r.type === 1) {
-                    const ip = Store.addNode({ label: r.data, type: 'ip' });
-                    Store.addLink(node.id, ip.id);
-                    c++;
+            if (type === 'dns') {
+                const data = await this.fetch(`https://dns.google/resolve?name=${node.label}&type=A`);
+                if (data.Answer) {
+                    data.Answer.forEach(r => { if(r.type===1) { Store.addNode({label:r.data, type:'ip'}); Store.addLink(node.id, Store.state.nodes[Store.state.nodes.length-1].id); }});
+                    node.meta = { ...node.meta, dns_records: data.Answer.length };
+                    Logger.log("DNS Resolved", "success");
                 }
-            });
-            Graph.refresh();
-            Logger.log(`Resolved ${c} IPs`, "success");
-        } else {
-            throw new Error("No DNS records found");
-        }
-    },
-
-    async crt(node) {
-        // crt.sh returns a JSON list directly
-        const data = await this.fetch(`https://crt.sh/?q=%.${node.label}&output=json`);
-        if (Array.isArray(data)) {
-            const unique = [...new Set(data.map(d => d.name_value))].slice(0, 8); // Limit to 8
-            unique.forEach(sub => {
-                const n = Store.addNode({ label: sub, type: 'domain' });
-                Store.addLink(node.id, n.id);
-            });
-            Graph.refresh();
-            Logger.log(`Found ${unique.length} subdomains`, "success");
-        } else {
-            throw new Error("Invalid CRT response");
-        }
-    },
-
-    async geoip(node) {
-        if (!/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(node.label)) throw new Error("Not an IP address");
-        const data = await this.fetch(`https://ipapi.co/${node.label}/json/`);
-        if (data.city) {
-            const loc = Store.addNode({ label: `${data.city}, ${data.country_code}`, type: 'location' });
-            Store.addLink(node.id, loc.id);
-            if (data.org) {
-                const asn = Store.addNode({ label: data.org, type: 'asn' });
-                Store.addLink(node.id, asn.id);
+            } else if (type === 'whois') {
+                const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(node.label);
+                const url = isIp ? `https://rdap.arin.net/registry/ip/${node.label}` : `https://rdap.org/domain/${node.label}`;
+                const data = await this.fetch(url);
+                // Save raw data to node
+                node.meta = { ...node.meta, ...data };
+                if (data.entities) {
+                    data.entities.forEach(e => {
+                        let name = e.handle;
+                        if(e.vcardArray) { const fn = e.vcardArray[1].find(x=>x[0]==='fn'); if(fn) name=fn[3]; }
+                        if(name) { Store.addNode({label:name, type:'person'}); Store.addLink(node.id, Store.state.nodes[Store.state.nodes.length-1].id); }
+                    });
+                }
+                Logger.log("WHOIS Data Enriched", "success");
+            } else if (type === 'geoip') {
+                const data = await this.fetch(`https://ipapi.co/${node.label}/json/`);
+                if(data.city) {
+                    const loc = Store.addNode({label:`${data.city}, ${data.country_code}`, type:'location'});
+                    Store.addLink(node.id, loc.id);
+                    node.meta = { ...node.meta, ...data };
+                    Logger.log("GeoIP Located", "success");
+                }
+            } else if (type === 'crt') {
+                const data = await this.fetch(`https://crt.sh/?q=%.${node.label}&output=json`);
+                const unique = [...new Set(data.map(d => d.name_value))].slice(0, 10);
+                unique.forEach(sub => { Store.addNode({label:sub, type:'domain'}); Store.addLink(node.id, Store.state.nodes[Store.state.nodes.length-1].id); });
+                Logger.log(`Found ${unique.length} subdomains`, "success");
             }
             Graph.refresh();
-            Logger.log("GeoIP Success", "success");
-        } else {
-            throw new Error("GeoIP lookup failed");
-        }
-    },
-
-    async whois(node) {
-        const isIp = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/.test(node.label);
-        const url = isIp ? `https://rdap.arin.net/registry/ip/${node.label}` : `https://rdap.org/domain/${node.label}`;
-        
-        // RDAP responses are complex, we try to extract entities
-        const data = await this.fetch(url);
-        if (data.entities) {
-            let c = 0;
-            data.entities.forEach(e => {
-                // Try to find a name in vcard or handle
-                let name = e.handle;
-                if (e.vcardArray) {
-                    const fn = e.vcardArray[1].find(x => x[0] === 'fn');
-                    if (fn) name = fn[3];
-                }
-                if (name) {
-                    const n = Store.addNode({ label: name, type: 'person' });
-                    Store.addLink(node.id, n.id);
-                    c++;
-                }
-            });
-            Graph.refresh();
-            Logger.log(`Found ${c} entities`, "success");
-        } else {
-            throw new Error("No WHOIS entities found");
-        }
+            Graph.showProps(node); // Refresh inspector
+        } catch (e) { Logger.log(e.message, "error"); }
     }
 };
 
-// --- IO ---
-window.IO = {
-    export() {
-        const d = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(Store.state));
-        const a = document.createElement('a'); a.href = d; a.download = `titan_${Date.now()}.json`; a.click();
-        Logger.log("Exported", "success");
-    },
-    import(el) {
-        const f = el.files[0];
-        if(!f) return;
-        const r = new FileReader();
-        r.onload = e => {
-            try { Store.state = JSON.parse(e.target.result); Store.save(); Graph.refresh(); Logger.log("Imported", "success"); }
-            catch(err) { Logger.log("Import Failed", "error"); }
-        };
-        r.readAsText(f);
-    }
+const IO = {
+    export() { const d = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(Store.state)); const a = document.createElement('a'); a.href = d; a.download = `titan_${Date.now()}.json`; a.click(); },
+    import(el) { const f = el.files[0]; if(!f)return; const r = new FileReader(); r.onload = e => { try { Store.state = JSON.parse(e.target.result); Store.save(); Graph.refresh(); Logger.log("Imported"); } catch(err) { Logger.log("Import Failed", "error"); } }; r.readAsText(f); }
 };
 
-// --- APP FACADE ---
-window.App = { undo: () => Store.undo(), redo: () => Store.redo() };
+const App = { undo: () => Store.undo(), redo: () => Store.redo() };
 
-// --- INIT ---
-window.onload = () => {
-    Store.init();
-    Graph.init();
-    Logger.log("TitanGraph v5 Online", "success");
-};
-
+window.onload = () => { Store.init(); Graph.init(); Logger.log("TitanGraph v6 Online"); };
 </script>
 </body>
 </html>
