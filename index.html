@@ -3,10 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TitanGraph v14.1 | 2D Precision</title>
+  <title>TitanGraph v14.2 | 2D Precision</title>
 
   <!-- CORE ENGINE (2D ONLY) -->
-  <!-- Fix: unpkg can fail/intermittently break for force-graph. Use jsDelivr and pin a known version. -->
   <script src="https://cdn.jsdelivr.net/npm/force-graph@1.51.0/dist/force-graph.min.js"></script>
 
   <!-- ICONS & FONTS -->
@@ -44,7 +43,7 @@
     /* HEADER */
     header { grid-column: 1 / -1; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 100; }
     .brand { font-family: var(--font-mono); font-weight: 700; color: var(--accent); font-size: 1.2rem; letter-spacing: 1px; }
-    .tools { display: flex; gap: 10px; align-items: center; }
+    .tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 
     /* TOOLBAR */
     #toolbar { grid-column: 1; grid-row: 2 / -1; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding-top: 20px; gap: 15px; z-index: 90; }
@@ -66,9 +65,9 @@
 
     /* OVERLAYS */
     .overlay { position: absolute; background: rgba(20, 20, 20, 0.95); border: 1px solid var(--border); border-radius: 6px; padding: 10px; z-index: 10; backdrop-filter: blur(4px); }
-    #search { top: 20px; left: 20px; display: flex; gap: 10px; width: 320px; }
+    #search { top: 20px; left: 20px; display: flex; gap: 10px; width: 340px; }
     #search input { background: transparent; border: none; color: white; width: 100%; font-family: var(--font-mono); }
-    #stats { top: 20px; right: 20px; font-size: 0.8rem; color: var(--muted); text-align: right; min-width: 220px; }
+    #stats { top: 20px; right: 20px; font-size: 0.8rem; color: var(--muted); text-align: right; min-width: 240px; }
     #zoom { bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 5px; }
     .z-btn { width: 30px; height: 30px; background: var(--panel); border: 1px solid var(--border); color: var(--text); cursor: pointer; border-radius: 4px; }
     .z-btn:hover { background: #333; }
@@ -98,6 +97,10 @@
     .l-suc { color: var(--success); }
     .l-wrn { color: var(--warn); }
 
+    /* Fix: when logs are minimized, hide the scrollable log container (no scrollbar) */
+    body.log-min #l-cont { display: none; }
+    body.log-min #logs { overflow: hidden; }
+
     /* UTILS */
     .btn { background: var(--accent); color: #000; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: 700; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 8px; }
     .btn:hover { filter: brightness(1.1); }
@@ -107,7 +110,7 @@
     .pill { display:inline-flex; align-items:center; gap:6px; font-family: var(--font-mono); font-size: 0.72rem; color:#bbb; border:1px solid #2a2a2a; padding:3px 8px; border-radius: 999px; }
 
     /* CONTEXT MENU */
-    #ctx { position: fixed; display: none; background: var(--panel); border: 1px solid var(--accent); box-shadow: 0 5px 20px rgba(0,0,0,0.9); z-index: 99999; min-width: 220px; border-radius: 6px; overflow: hidden; }
+    #ctx { position: fixed; display: none; background: var(--panel); border: 1px solid var(--accent); box-shadow: 0 5px 20px rgba(0,0,0,0.9); z-index: 99999; min-width: 240px; border-radius: 6px; overflow: hidden; }
     .ctx-i { padding: 10px 15px; cursor: pointer; font-size: 0.85rem; display: flex; gap: 10px; align-items: center; color: var(--text); }
     .ctx-i:hover { background: var(--accent); color: #000; }
     .ctx-i small { opacity: 0.7; margin-left: auto; font-family: var(--font-mono); }
@@ -116,25 +119,32 @@
 
     /* MODAL */
     #modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: none; z-index: 100000; }
-    #modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(520px, 92vw); background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 20px 80px rgba(0,0,0,0.8); display: none; z-index: 100001; }
+    #modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(560px, 94vw); background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 20px 80px rgba(0,0,0,0.8); display: none; z-index: 100001; }
     .m-head { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; color: var(--accent); font-weight: 700; font-family: var(--font-mono); }
     .m-body { padding: 16px; }
     .m-foot { padding: 14px 16px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
     .m-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .m-grid .form-row { margin: 0; }
+
+    /* Toast */
+    #toast { position: fixed; bottom: 16px; left: 76px; background: rgba(20,20,20,0.94); border: 1px solid #222; padding: 10px 12px; border-radius: 10px; display:none; z-index: 120000; max-width: min(520px, 92vw); box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+    #toast .t-title { color: #fff; font-weight: 700; margin-bottom: 3px; font-family: var(--font-mono); }
+    #toast .t-msg { color: #bbb; font-size: 0.85rem; line-height: 1.35; }
   </style>
 </head>
 
 <body>
   <div id="app">
     <header>
-      <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v14.1</div>
+      <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v14.2</div>
       <div class="tools">
         <span class="pill" id="mode-pill">MODE: MOVE</span>
+        <span class="pill" id="snap-pill" title="Snap-to-grid">SNAP: OFF</span>
         <button class="btn btn-sec" onclick="App.undo()" title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
         <button class="btn btn-sec" onclick="App.redo()" title="Redo (Ctrl+Y)"><i class="fas fa-redo"></i></button>
         <div style="width:1px; background:var(--border); margin:0 5px"></div>
         <button class="btn btn-sec" onclick="IO.export()" title="Export JSON (Ctrl+S)">JSON</button>
+        <button class="btn btn-sec" onclick="IO.exportPng()" title="Export PNG (Ctrl+P)"><i class="fas fa-camera"></i></button>
         <button class="btn" onclick="document.getElementById('f-in').click()" title="Import JSON (Ctrl+O)">Import</button>
         <input type="file" id="f-in" hidden onchange="IO.import(this)">
       </div>
@@ -144,7 +154,7 @@
       <div class="t-btn active" id="t-move" onclick="Tools.set('move')" data-tip="Move / Select (V)">
         <i class="fas fa-mouse-pointer"></i>
       </div>
-      <div class="t-btn" id="t-link" onclick="Tools.set('link')" data-tip="Link (L) — Drag or Click-to-Link">
+      <div class="t-btn" id="t-link" onclick="Tools.set('link')" data-tip="Link (L) — Click source then target">
         <i class="fas fa-link"></i>
       </div>
       <div class="t-btn" onclick="Graph.addManual()" data-tip="Add Node (N) / Double-click background">
@@ -155,6 +165,12 @@
 
       <div class="t-btn" id="t-phys" onclick="Graph.togglePhysics()" data-tip="Toggle Physics Flow">
         <i class="fas fa-wind"></i>
+      </div>
+      <div class="t-btn" id="t-snap" onclick="Graph.toggleSnap()" data-tip="Snap to Grid">
+        <i class="fas fa-magnet"></i>
+      </div>
+      <div class="t-btn" onclick="Graph.oneShotLayout()" data-tip="Auto Layout (one shot)">
+        <i class="fas fa-sitemap"></i>
       </div>
       <div class="t-btn" onclick="Graph.fit()" data-tip="Fit View">
         <i class="fas fa-compress"></i>
@@ -187,13 +203,17 @@
       <div id="hint" class="overlay">
         <div style="font-family:var(--font-mono); margin-bottom:6px; color:#fff">HOTKEYS</div>
         <div>V: Move</div>
-        <div>L: Link tool</div>
+        <div>L: Link tool (click source → target)</div>
+        <div>Shift (hold): Temporary Link mode</div>
         <div>N: Add node at cursor</div>
         <div>Double-click background: Add node</div>
         <div>Ctrl+K: Focus search</div>
         <div>Delete: Delete selected</div>
         <div>Esc: Cancel link / close menus</div>
-        <div>Shift (hold): Temporary Link mode</div>
+        <div>Ctrl+P: Export PNG</div>
+        <div>Ctrl+S: Export JSON</div>
+        <div>Ctrl+O: Import JSON</div>
+        <div style="margin-top:6px; color:#aaa">Tip: in Link mode, click a node then click another node to link.</div>
       </div>
     </div>
 
@@ -224,58 +244,104 @@
 
   <!-- CONTEXT MENU -->
   <div id="ctx">
-    <!-- Node actions -->
-    <div class="ctx-i" data-ctx="node" onclick="Transforms.run('dns')"><i class="fas fa-globe"></i> Resolve DNS</div>
-    <div class="ctx-i" data-ctx="node" onclick="Transforms.run('whois')"><i class="fas fa-id-card"></i> WHOIS</div>
-    <div class="ctx-i" data-ctx="node" onclick="Transforms.run('geoip')"><i class="fas fa-map-marker-alt"></i> GeoIP</div>
+    <!-- Node actions (generic) -->
+    <div class="ctx-i" data-ctx="node" data-node-types="domain" onclick="Transforms.run('dns')"><i class="fas fa-globe"></i> Resolve DNS <small>A</small></div>
+    <div class="ctx-i" data-ctx="node" data-node-types="domain,ip" onclick="Transforms.run('whois')"><i class="fas fa-id-card"></i> WHOIS / RDAP</div>
+    <div class="ctx-i" data-ctx="node" data-node-types="ip" onclick="Transforms.run('geoip')"><i class="fas fa-map-marker-alt"></i> GeoIP</div>
 
     <div class="ctx-div" data-ctx="node"></div>
+
+    <!-- Email transforms -->
+    <div class="ctx-i" data-ctx="node" data-node-types="email" onclick="Transforms.run('email_domain')"><i class="fas fa-at"></i> Extract domain <small>D</small></div>
+    <div class="ctx-i" data-ctx="node" data-node-types="email" onclick="Transforms.run('email_mx')"><i class="fas fa-server"></i> Lookup MX <small>MX</small></div>
+    <div class="ctx-i" data-ctx="node" data-node-types="email" onclick="Transforms.run('email_spf')"><i class="fas fa-shield-halved"></i> Lookup SPF <small>SPF</small></div>
+    <div class="ctx-i" data-ctx="node" data-node-types="email" onclick="Transforms.run('email_dmarc')"><i class="fas fa-shield"></i> Lookup DMARC <small>DMARC</small></div>
+
+    <div class="ctx-div" data-ctx="node"></div>
+
     <div class="ctx-i" data-ctx="node" onclick="Graph.ctxAddLinkedNode()"><i class="fas fa-plus"></i> Add linked node <small>Shift+N</small></div>
     <div class="ctx-i" data-ctx="node" onclick="Graph.ctxStartLinkFrom()"><i class="fas fa-link"></i> Start link from this <small>L</small></div>
+    <div class="ctx-i" data-ctx="node" onclick="Graph.duplicateSelected()"><i class="fas fa-clone"></i> Duplicate <small>Ctrl+D</small></div>
 
     <div class="ctx-div" data-ctx="node"></div>
     <div class="ctx-i" data-ctx="node" onclick="Graph.delSel()"><i class="fas fa-trash" style="color:var(--danger)"></i> Delete <small>Del</small></div>
 
     <!-- Link actions -->
+    <div class="ctx-i" data-ctx="link" onclick="Graph.reverseSelectedLink()"><i class="fas fa-right-left"></i> Reverse direction</div>
     <div class="ctx-i" data-ctx="link" onclick="Graph.delSel()"><i class="fas fa-trash" style="color:var(--danger)"></i> Delete link <small>Del</small></div>
 
     <!-- Background actions -->
     <div class="ctx-i" data-ctx="bg" onclick="Graph.ctxAddNodeHere()"><i class="fas fa-plus"></i> Add node here <small>N</small></div>
     <div class="ctx-i" data-ctx="bg" onclick="Graph.fit()"><i class="fas fa-compress"></i> Fit view</div>
     <div class="ctx-i" data-ctx="bg" onclick="Graph.resetView()"><i class="fas fa-bullseye"></i> Reset view</div>
+    <div class="ctx-div" data-ctx="bg"></div>
+    <div class="ctx-i" data-ctx="bg" onclick="Graph.clearGraph()"><i class="fas fa-bomb" style="color:var(--danger)"></i> Clear graph</div>
   </div>
 
   <!-- MODAL -->
   <div id="modal-backdrop" onclick="UI.closeModal()"></div>
   <div id="modal">
     <div class="m-head">
-      <span id="m-title">Add Node</span>
+      <span id="m-title">Modal</span>
       <button class="btn btn-sec" style="padding:2px 8px" onclick="UI.closeModal()"><i class="fas fa-times"></i></button>
     </div>
     <div class="m-body" id="m-body"></div>
     <div class="m-foot" id="m-foot"></div>
   </div>
 
+  <div id="toast">
+    <div class="t-title" id="toast-title">Tip</div>
+    <div class="t-msg" id="toast-msg"></div>
+  </div>
+
   <script>
     /**
-     * TITAN GRAPH v14.1
-     * - Fixes critical CDN load issues (force-graph via jsDelivr pinned).
-     * - Fixes default "steadfast" behavior (initial nodes pinned when physics is off).
-     * - Adds background right-click "Add node here".
-     * - Adds multiple link creation methods:
-     *    1) Link tool: drag rubber-band from node -> node (mouse down on node, drag, release)
-     *    2) Link tool: click source then click target
-     *    3) Hold Shift: temporary link mode from Move tool
-     * - Adds link selection + link inspector + link delete.
-     * - Improves undo/redo history integrity.
-     * - Hardens import/export (migration + normalization).
+     * TITAN GRAPH v14.2
+     * Additions vs v14.1:
+     * - Fix: click-to-link in Link tool (previously cleared source inadvertently).
+     * - Easier linking: Link tool now defaults to click source → click target; drag rubberband remains.
+     * - Labels readability: draw a small background plate under labels so link lines stay visually behind text.
+     * - Email node type added + email transforms (extract domain, MX/SPF/DMARC lookups).
+     * - Logs: when minimized, scroll container is hidden.
+     * - Extras: export PNG, duplicate node, reverse link, snap-to-grid, one-shot layout, clear graph (confirm).
      */
 
     const Config = {
-      version: "14.1",
-      colors: { domain: '#00ff9d', ip: '#00ccff', person: '#ffcc00', location: '#ff00ff', asn: '#aa00ff', default: '#888' },
-      icons:  { domain: '\uf0ac', ip: '\uf233', person: '\uf007', location: '\uf3c5', asn: '\uf19c', default: '\uf128' },
-      linkColors: { rel: '#333', resolves: '#00ff9d', owns: '#ffcc00', located: '#ff00ff', default: '#333' }
+      version: "14.2",
+      storageKey: "titan_v14",
+      colors: {
+        domain: '#00ff9d',
+        ip: '#00ccff',
+        email: '#ff6b6b',
+        person: '#ffcc00',
+        location: '#ff00ff',
+        asn: '#aa00ff',
+        default: '#888'
+      },
+      icons: {
+        domain: '\uf0ac',      // globe
+        ip: '\uf233',          // server
+        email: '\uf0e0',       // envelope
+        person: '\uf007',      // user
+        location: '\uf3c5',    // map-marker
+        asn: '\uf19c',         // university
+        default: '\uf128'      // question
+      },
+      linkColors: {
+        rel: '#333',
+        resolves: '#00ff9d',
+        owns: '#ffcc00',
+        located: '#ff00ff',
+        email_domain: '#ff6b6b',
+        mx: '#00ccff',
+        spf: '#30d158',
+        dmarc: '#ffcc00',
+        default: '#333'
+      },
+      snap: {
+        enabled: false,
+        step: 10 // graph units
+      }
     };
 
     const Utils = {
@@ -283,7 +349,7 @@
         const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
         return v.toString(16);
       }),
-      copy: o => JSON.parse(JSON.stringify(o)),
+      copy: (o) => JSON.parse(JSON.stringify(o)),
       now: () => new Date().toLocaleTimeString(),
       clamp: (v, a, b) => Math.min(b, Math.max(a, v)),
       escapeHtml: (s) => String(s ?? '')
@@ -293,8 +359,34 @@
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;'),
       isObj: (v) => v && typeof v === 'object',
-      // Normalize link endpoint to id string
-      endpointId: (ep) => Utils.isObj(ep) ? (ep.id ?? ep._id ?? ep.label ?? ep) : ep
+      endpointId: (ep) => Utils.isObj(ep) ? (ep.id ?? ep._id ?? ep.label ?? ep) : ep,
+      isIp: (s) => /^\d{1,3}(\.\d{1,3}){3}$/.test(String(s||'').trim()),
+      isEmail: (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s||'').trim()),
+      isDomainLike: (s) => {
+        const v = String(s||'').trim();
+        if (!v || v.includes(' ') || v.includes('@')) return false;
+        if (Utils.isIp(v)) return false;
+        // very permissive (sub.domain.tld)
+        return /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(v);
+      },
+      detectType: (label) => {
+        const s = String(label||'').trim();
+        if (Utils.isEmail(s)) return 'email';
+        if (Utils.isIp(s)) return 'ip';
+        if (Utils.isDomainLike(s)) return 'domain';
+        return 'default';
+      },
+      // Small rounded rect helper for label background plates
+      roundRect(ctx, x, y, w, h, r) {
+        const rr = Math.min(r, w/2, h/2);
+        ctx.beginPath();
+        ctx.moveTo(x + rr, y);
+        ctx.arcTo(x + w, y, x + w, y + h, rr);
+        ctx.arcTo(x + w, y + h, x, y + h, rr);
+        ctx.arcTo(x, y + h, x, y, rr);
+        ctx.arcTo(x, y, x + w, y, rr);
+        ctx.closePath();
+      }
     };
 
     // --- STATE ---
@@ -304,31 +396,55 @@
       hIdx: -1,
 
       init() {
-        const s = localStorage.getItem('titan_v14');
+        const s = localStorage.getItem(Config.storageKey);
         if (s) {
           try {
             this.state = JSON.parse(s);
-            Logger.log("Session restored.", "suc");
-          } catch (e) {
+            Logger.log('Session restored.', 'suc');
+          } catch {
             this.reset();
           }
         } else {
           this.reset();
         }
 
-        // migrate/normalize
         this.state = this.normalizeState(this.state);
-        // Ensure at least one node
         if (!this.state.nodes.length) this.reset();
 
-        // Ensure pinned by default if physics is off (steadfast)
-        this.ensurePinning(false);
+        // Load persisted UI settings
+        const ui = this.loadUiSettings();
+        if (ui.inspClosed) document.body.classList.add('insp-closed');
+        if (ui.logMin) document.body.classList.add('log-min');
+        if (ui.hints) document.body.classList.add('show-hints');
+        Config.snap.enabled = !!ui.snap;
 
-        // Seed history with current state (no double-save inflation)
+        this.ensurePinning(Graph.physics);
+
+        // Seed history with current state
         this.history = [Utils.copy(this.state)];
         this.hIdx = 0;
         this.persist();
         UI.stats();
+        UI.updateSnapPill();
+      },
+
+      loadUiSettings() {
+        try {
+          const raw = localStorage.getItem(Config.storageKey + '_ui');
+          return raw ? JSON.parse(raw) : { inspClosed:false, logMin:false, hints:false, snap:false };
+        } catch {
+          return { inspClosed:false, logMin:false, hints:false, snap:false };
+        }
+      },
+
+      saveUiSettings() {
+        const ui = {
+          inspClosed: document.body.classList.contains('insp-closed'),
+          logMin: document.body.classList.contains('log-min'),
+          hints: document.body.classList.contains('show-hints'),
+          snap: Config.snap.enabled
+        };
+        localStorage.setItem(Config.storageKey + '_ui', JSON.stringify(ui));
       },
 
       reset() {
@@ -349,17 +465,14 @@
           if (!n) continue;
           const id = n.id || Utils.uuid();
           const label = (n.label ?? n.name ?? 'Node').toString();
-          const type = (n.type ?? 'default').toString();
+          const dt = (n.type ?? Utils.detectType(label)).toString();
+          const type = Config.colors[dt] ? dt : 'default';
           const x = Number.isFinite(n.x) ? n.x : 0;
           const y = Number.isFinite(n.y) ? n.y : 0;
-          const fx = (n.fx === null || n.fx === undefined) ? undefined : n.fx;
-          const fy = (n.fy === null || n.fy === undefined) ? undefined : n.fy;
+          const fx = (n.fx === null || n.fx === undefined) ? null : n.fx;
+          const fy = (n.fy === null || n.fy === undefined) ? null : n.fy;
           out.nodes.push({
-            id,
-            label,
-            type: Config.colors[type] ? type : 'default',
-            x, y,
-            fx, fy,
+            id, label, type, x, y, fx, fy,
             val: Number.isFinite(n.val) ? n.val : 1,
             notes: (n.notes ?? '').toString(),
             meta: Utils.isObj(n.meta) ? n.meta : {}
@@ -374,7 +487,6 @@
           const source = Utils.endpointId(l.source);
           const target = Utils.endpointId(l.target);
           if (!nodeIdSet.has(source) || !nodeIdSet.has(target)) continue;
-
           out.links.push({
             id: l.id || Utils.uuid(),
             source,
@@ -386,7 +498,7 @@
           });
         }
 
-        // Deduplicate links (directional)
+        // Deduplicate links (directional + type + label)
         const seen = new Set();
         out.links = out.links.filter(l => {
           const k = `${l.source}=>${l.target}::${l.type}::${l.label}`;
@@ -405,22 +517,21 @@
         for (const gn of gNodes) {
           const sn = this.state.nodes.find(n => n.id === gn.id);
           if (!sn) continue;
-          // keep numeric coords only
           if (Number.isFinite(gn.x)) sn.x = gn.x;
           if (Number.isFinite(gn.y)) sn.y = gn.y;
+          // preserve pinned/unpinned
           sn.fx = (gn.fx === null || gn.fx === undefined) ? null : gn.fx;
           sn.fy = (gn.fy === null || gn.fy === undefined) ? null : gn.fy;
         }
       },
 
       persist() {
-        localStorage.setItem('titan_v14', JSON.stringify(this.state));
+        localStorage.setItem(Config.storageKey, JSON.stringify(this.state));
       },
 
-      save(reason = "") {
+      save(reason = '') {
         this.sync();
 
-        // history trimming / correct hIdx maintenance
         if (this.hIdx < this.history.length - 1) {
           this.history = this.history.slice(0, this.hIdx + 1);
         }
@@ -428,14 +539,12 @@
         if (this.history.length > 80) {
           const overflow = this.history.length - 80;
           this.history.splice(0, overflow);
-          this.hIdx = this.history.length - 1;
-        } else {
-          this.hIdx = this.history.length - 1;
         }
+        this.hIdx = this.history.length - 1;
 
         this.persist();
         UI.stats();
-        if (reason) Logger.log(reason, "inf");
+        if (reason) Logger.log(reason, 'inf');
       },
 
       undo() {
@@ -444,7 +553,7 @@
           this.state = Utils.copy(this.history[this.hIdx]);
           this.state = this.normalizeState(this.state);
           Graph.refresh();
-          Logger.log("Undo", "inf");
+          Logger.log('Undo', 'inf');
         }
       },
 
@@ -454,19 +563,18 @@
           this.state = Utils.copy(this.history[this.hIdx]);
           this.state = this.normalizeState(this.state);
           Graph.refresh();
-          Logger.log("Redo", "inf");
+          Logger.log('Redo', 'inf');
         }
       },
 
       ensurePinning(physicsOn) {
-        // If physics is off, fix all nodes at their current positions.
-        if (!physicsOn) {
-          for (const n of this.state.nodes) {
-            if (!Number.isFinite(n.x)) n.x = 0;
-            if (!Number.isFinite(n.y)) n.y = 0;
-            n.fx = Number.isFinite(n.fx) ? n.fx : n.x;
-            n.fy = Number.isFinite(n.fy) ? n.fy : n.y;
-          }
+        if (physicsOn) return;
+        for (const n of this.state.nodes) {
+          if (!Number.isFinite(n.x)) n.x = 0;
+          if (!Number.isFinite(n.y)) n.y = 0;
+          // If fx/fy are null, node is explicitly unpinned (allow manual unpin even in steadfast).
+          if (n.fx === null || n.fx === undefined) n.fx = n.x;
+          if (n.fy === null || n.fy === undefined) n.fy = n.y;
         }
       },
 
@@ -474,11 +582,13 @@
         this.sync();
         const x = Number.isFinite(d.x) ? d.x : 0;
         const y = Number.isFinite(d.y) ? d.y : 0;
+        const label = (d.label ?? 'Node').toString().trim();
+        const dt = (d.type ?? Utils.detectType(label)).toString();
 
         const n = {
           id: Utils.uuid(),
-          label: (d.label ?? 'Node').toString(),
-          type: (d.type && Config.colors[d.type]) ? d.type : 'default',
+          label: label || 'Node',
+          type: Config.colors[dt] ? dt : 'default',
           val: 1,
           notes: (d.notes ?? '').toString(),
           meta: d.meta || {},
@@ -494,16 +604,20 @@
 
       addLink(s, t, extra = {}) {
         if (!s || !t || s === t) return null;
-
-        // ensure endpoints exist
         const sn = this.state.nodes.find(n => n.id === s);
         const tn = this.state.nodes.find(n => n.id === t);
         if (!sn || !tn) return null;
 
-        // dedupe (same endpoints + type + label)
         const typ = (extra.type ?? 'rel').toString();
         const lab = (extra.label ?? '').toString();
-        const ex = this.state.links.find(l => Utils.endpointId(l.source) === s && Utils.endpointId(l.target) === t && (l.type ?? 'rel') === typ && (l.label ?? '') === lab);
+        const dir = (extra.directed ?? true) === false ? false : true;
+
+        const ex = this.state.links.find(l =>
+          Utils.endpointId(l.source) === s &&
+          Utils.endpointId(l.target) === t &&
+          (l.type ?? 'rel') === typ &&
+          (l.label ?? '') === lab
+        );
         if (ex) return ex;
 
         this.sync();
@@ -513,9 +627,10 @@
           target: t,
           label: lab,
           type: typ,
-          directed: (extra.directed ?? true) === false ? false : true,
+          directed: dir,
           meta: extra.meta || {}
         };
+
         this.state.links.push(l);
         this.save(`Linked ${sn.label} -> ${tn.label}`);
         Graph.refresh();
@@ -527,16 +642,23 @@
         if (!n) return;
         Object.assign(n, up);
 
-        // keep type valid
+        if (up.label && !up.type) {
+          // If user changes label and type is still default, try to auto-upgrade type.
+          if (n.type === 'default') {
+            const dt = Utils.detectType(n.label);
+            if (dt !== 'default') n.type = dt;
+          }
+        }
+
         if (up.type && !Config.colors[up.type]) n.type = 'default';
 
-        // if physics off, keep pinned when changing label/type
-        if (!Graph.physics) {
+        // If physics is off and node is pinned, keep pinned.
+        if (!Graph.physics && n.fx !== null && n.fy !== null) {
           n.fx = Number.isFinite(n.fx) ? n.fx : n.x;
           n.fy = Number.isFinite(n.fy) ? n.fy : n.y;
         }
 
-        this.save("Node updated");
+        this.save('Node updated');
         Graph.refresh();
       },
 
@@ -544,7 +666,7 @@
         const l = this.state.links.find(x => x.id === id);
         if (!l) return;
         Object.assign(l, up);
-        this.save("Link updated");
+        this.save('Link updated');
         Graph.refresh();
       },
 
@@ -552,13 +674,13 @@
         this.sync();
         this.state.nodes = this.state.nodes.filter(n => n.id !== id);
         this.state.links = this.state.links.filter(l => Utils.endpointId(l.source) !== id && Utils.endpointId(l.target) !== id);
-        this.save("Node deleted");
+        this.save('Node deleted');
         Graph.refresh();
       },
 
       delLink(id) {
         this.state.links = this.state.links.filter(l => l.id !== id);
-        this.save("Link deleted");
+        this.save('Link deleted');
         Graph.refresh();
       }
     };
@@ -572,7 +694,7 @@
       selectedLink: null,
 
       // modes
-      physics: false, // Default to Steadfast (Fixed)
+      physics: false,
       hoverNode: null,
       hoverLink: null,
 
@@ -580,16 +702,19 @@
       mouse: { sx: 0, sy: 0, gx: 0, gy: 0, inside: false },
 
       // linking
-      linkFrom: null, // click-to-link start node
+      linkFrom: null,
       linkDrag: { active: false, fromId: null, fromX: 0, fromY: 0, toX: 0, toY: 0 },
 
-      // right-click context
-      ctx: { kind: "bg", x: 0, y: 0, gx: 0, gy: 0 },
+      // context
+      ctx: { kind: 'bg', x: 0, y: 0, gx: 0, gy: 0 },
+
+      // grid snap
+      snapEnabled() { return !!Config.snap.enabled && !this.physics; },
 
       init() {
         if (typeof ForceGraph !== 'function') {
-          Logger.log("ForceGraph failed to load. Check CDN connectivity.", "err");
-          UI.setStatus("Engine load failed.");
+          Logger.log('ForceGraph failed to load. Check CDN connectivity.', 'err');
+          UI.setStatus('Engine load failed.');
           return;
         }
 
@@ -598,10 +723,7 @@
           .backgroundColor('#0a0a0a')
           .nodeLabel(n => n.label)
           .nodeColor(n => Config.colors[n.type] || Config.colors.default)
-          .linkColor(l => {
-            const t = (l.type ?? 'rel');
-            return Config.linkColors[t] || Config.linkColors.default;
-          })
+          .linkColor(l => Config.linkColors[(l.type ?? 'rel')] || Config.linkColors.default)
           .linkWidth(l => (l.width ?? 2))
           .linkDirectionalArrowLength(l => (l.directed === false ? 0 : 4))
           .linkDirectionalArrowRelPos(1)
@@ -619,21 +741,22 @@
             if (!this.hoverNode) el.style.cursor = l ? 'pointer' : (Tools.effective() === 'link' ? 'crosshair' : 'default');
           })
 
+          // Custom node render
           .nodeCanvasObject((n, ctx, k) => {
             const r = 6;
 
-            // Selection halo
+            // Selected halo
             if (this.selectedNode && n.id === this.selectedNode.id) {
               ctx.beginPath();
-              ctx.arc(n.x, n.y, r * 1.9, 0, 2 * Math.PI);
+              ctx.arc(n.x, n.y, r * 1.95, 0, 2 * Math.PI);
               ctx.fillStyle = 'rgba(0,255,157,0.28)';
               ctx.fill();
             }
 
-            // Link-from halo (click-to-link)
+            // Link-from halo
             if (this.linkFrom && n.id === this.linkFrom.id) {
               ctx.beginPath();
-              ctx.arc(n.x, n.y, r * 2.6, 0, 2 * Math.PI);
+              ctx.arc(n.x, n.y, r * 2.65, 0, 2 * Math.PI);
               ctx.strokeStyle = '#00ff9d';
               ctx.lineWidth = 2 / k;
               ctx.setLineDash([4 / k, 2 / k]);
@@ -647,7 +770,7 @@
             ctx.fillStyle = Config.colors[n.type] || '#888';
             ctx.fill();
 
-            // Icon (Font Awesome)
+            // Icon
             ctx.save();
             ctx.fillStyle = '#000';
             ctx.textAlign = 'center';
@@ -656,19 +779,38 @@
             ctx.fillText(Config.icons[n.type] || Config.icons.default, n.x, n.y + (0.5 / k));
             ctx.restore();
 
+            // Label background plate (keeps links visually below text)
+            const label = String(n.label ?? '');
+            ctx.save();
+            ctx.font = `${12 / k}px JetBrains Mono`;
+            const padX = 6 / k;
+            const padY = 3 / k;
+            const textW = ctx.measureText(label).width;
+            const textH = 12 / k;
+            const cx = n.x - (textW / 2) - padX;
+            const cy = n.y + r + (6 / k);
+            const w = textW + padX * 2;
+            const h = textH + padY * 2;
+
+            Utils.roundRect(ctx, cx, cy, w, h, 4 / k);
+            ctx.fillStyle = 'rgba(10,10,10,0.72)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+            ctx.lineWidth = 1 / k;
+            ctx.stroke();
+
             // Label
-            ctx.font = `${12 / k}px ${Config.version.includes('14') ? 'JetBrains Mono' : 'monospace'}`;
             ctx.fillStyle = '#eee';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
-            ctx.fillText(n.label, n.x, n.y + r + (6 / k));
+            ctx.fillText(label, n.x, cy + padY);
+            ctx.restore();
           })
 
           .onNodeClick((n, e) => {
-            // Ctrl-click: keep reserved for future multi-select; for now just select.
             const eff = Tools.effective();
             if (eff === 'link') {
-              this.handleClickToLink(n);
+              this.handleClickToLink(n, e);
               return;
             }
             this.selectNode(n);
@@ -681,37 +823,39 @@
           .onNodeRightClick((n, e) => {
             e.preventDefault();
             this.selectNode(n);
-            this.showCtx("node", e.clientX, e.clientY);
+            this.showCtx('node', e.clientX, e.clientY);
           })
 
           .onLinkRightClick((l, e) => {
             e.preventDefault();
             this.selectLink(l);
-            this.showCtx("link", e.clientX, e.clientY);
+            this.showCtx('link', e.clientX, e.clientY);
           })
 
           .onBackgroundClick(() => {
+            if (Tools.effective() === 'link' && this.linkFrom) {
+              // Convenient cancel
+              this.linkFrom = null;
+              UI.toast('Link canceled', 'Click a node to start linking again.', 1200);
+              UI.setStatus('Link canceled.');
+              return;
+            }
             this.clearSelection();
             UI.hideCtx();
           });
 
-        // Background right-click (library supports it in most builds; fallback via canvas listener below)
         if (typeof this.instance.onBackgroundRightClick === 'function') {
           this.instance.onBackgroundRightClick((e) => {
             e.preventDefault();
             this.clearSelection();
-            this.showCtx("bg", e.clientX, e.clientY);
+            this.showCtx('bg', e.clientX, e.clientY);
           });
         }
 
-        // Sizing
         this.resize();
         window.addEventListener('resize', () => this.resize());
-
-        // Pointer tracking (for add-at-cursor & rubberband link)
         this.attachCanvasHandlers(el);
 
-        // Initial render
         this.refresh();
         Tools.applyNodeDrag();
       },
@@ -723,7 +867,6 @@
       },
 
       attachCanvasHandlers(containerEl) {
-        // ForceGraph creates a canvas inside the container.
         const getCanvas = () => containerEl.querySelector('canvas');
 
         const updateMouse = (evt) => {
@@ -737,7 +880,7 @@
           try {
             const gc = this.instance.screen2GraphCoords(sx, sy);
             this.mouse.gx = gc.x; this.mouse.gy = gc.y;
-          } catch (e) {}
+          } catch {}
         };
 
         const onMove = (evt) => {
@@ -750,13 +893,11 @@
 
         const onDown = (evt) => {
           updateMouse(evt);
-          // Left button only
           if (evt.button !== 0) return;
-
           const eff = Tools.effective();
 
-          // Rubberband linking: hold mouse down on node in link mode (or Shift held)
           if (eff === 'link' && this.hoverNode) {
+            // Rubberband linking: start drag from hovered node
             this.linkDrag.active = true;
             this.linkDrag.fromId = this.hoverNode.id;
             this.linkDrag.fromX = this.hoverNode.x;
@@ -770,42 +911,39 @@
         const onUp = (evt) => {
           updateMouse(evt);
           if (evt.button !== 0) return;
+          if (!this.linkDrag.active) return;
 
-          if (this.linkDrag.active) {
-            const fromId = this.linkDrag.fromId;
-            const fromNode = Store.state.nodes.find(n => n.id === fromId);
-            const target = this.hoverNode && this.hoverNode.id !== fromId ? this.hoverNode : null;
+          const fromId = this.linkDrag.fromId;
+          const fromNode = Store.state.nodes.find(n => n.id === fromId);
+          const target = this.hoverNode && this.hoverNode.id !== fromId ? this.hoverNode : null;
 
-            if (fromNode && target) {
-              Store.addLink(fromId, target.id, { type: 'rel', label: '' });
-              Logger.log(`Linked ${fromNode.label} -> ${target.label}`, "suc");
-            } else {
-              Logger.log("Link canceled.", "wrn");
-            }
-
-            this.linkDrag.active = false;
-            this.linkDrag.fromId = null;
-            UI.setStatus("Ready.");
+          if (fromNode && target) {
+            Store.addLink(fromId, target.id, { type: 'rel', label: '' });
+            Logger.log(`Linked ${fromNode.label} -> ${target.label}`, 'suc');
+          } else {
+            Logger.log('Link canceled.', 'wrn');
           }
+
+          this.linkDrag.active = false;
+          this.linkDrag.fromId = null;
+          UI.setStatus('Ready.');
         };
 
         const onDblClick = (evt) => {
           updateMouse(evt);
-          // Double-click background to add node at cursor
           if (this.hoverNode || this.hoverLink) return;
           this.openAddNodeModal({ x: this.mouse.gx, y: this.mouse.gy });
         };
 
         const onCtx = (evt) => {
-          // Fallback: if library doesn't hook background right click reliably
           updateMouse(evt);
-          if (this.hoverNode || this.hoverLink) return; // node/link context handled by FG callbacks
+          if (this.hoverNode || this.hoverLink) return;
           evt.preventDefault();
           this.clearSelection();
-          this.showCtx("bg", evt.clientX, evt.clientY);
+          this.showCtx('bg', evt.clientX, evt.clientY);
         };
 
-        // Draw rubberband line each frame
+        // Rubberband visual
         this.instance.onRenderFramePost((ctx, k) => {
           if (!this.linkDrag.active || !this.linkDrag.fromId) return;
           const from = this.instance.graphData().nodes.find(n => n.id === this.linkDrag.fromId);
@@ -821,7 +959,6 @@
           ctx.stroke();
           ctx.setLineDash([]);
 
-          // Draw a small target reticle if hovering a valid target
           if (this.hoverNode && this.hoverNode.id !== from.id) {
             ctx.beginPath();
             ctx.arc(this.hoverNode.x, this.hoverNode.y, 14 / k, 0, 2 * Math.PI);
@@ -832,19 +969,17 @@
           ctx.restore();
         });
 
-        // Attach handlers to the canvas itself once it exists
         const attach = () => {
           const canvas = getCanvas();
           if (!canvas) return false;
           canvas.addEventListener('mousemove', onMove);
           canvas.addEventListener('mousedown', onDown);
-          window.addEventListener('mouseup', onUp); // capture even if mouse leaves canvas
+          window.addEventListener('mouseup', onUp);
           canvas.addEventListener('dblclick', onDblClick);
           canvas.addEventListener('contextmenu', onCtx);
           return true;
         };
 
-        // Try immediately; otherwise retry a few times.
         if (!attach()) {
           let tries = 0;
           const t = setInterval(() => {
@@ -856,29 +991,23 @@
 
       refresh() {
         if (!this.instance) return;
-
-        // Ensure steadfast pinning if physics is off
         Store.ensurePinning(this.physics);
 
-        // Deep copy to ensure reactivity and prevent ForceGraph from mutating Store
         const data = {
           nodes: Store.state.nodes.map(n => ({ ...n })),
           links: Store.state.links.map(l => ({ ...l }))
         };
 
         this.instance.graphData(data);
-
-        // Apply drag enablement per tool
         Tools.applyNodeDrag();
-
         UI.stats();
       },
 
-      // Selection helpers
-      selectNode(n) {
+      // selection
+      selectNode(n, opts = {}) {
         this.selectedLink = null;
         this.selectedNode = n;
-        this.linkFrom = null;
+        if (!opts.keepLinkFrom) this.linkFrom = null;
         UI.inspNode(n);
         UI.hideCtx();
         UI.setStatus(`Selected node: ${n.label}`);
@@ -901,7 +1030,7 @@
         this.selectedLink = null;
         this.linkFrom = null;
         UI.clear();
-        UI.setStatus("Ready.");
+        UI.setStatus('Ready.');
       },
 
       delSel() {
@@ -918,58 +1047,114 @@
           this.selectedLink = null;
           UI.clear();
           UI.hideCtx();
-          return;
         }
       },
 
-      // Tools
+      reverseSelectedLink() {
+        if (!this.selectedLink) return;
+        const id = this.selectedLink.id;
+        const l = Store.state.links.find(x => x.id === id);
+        if (!l) return;
+        const s = Utils.endpointId(l.source);
+        const t = Utils.endpointId(l.target);
+        Store.updateLink(id, { source: t, target: s, directed: true });
+        Logger.log('Link reversed.', 'suc');
+      },
+
+      duplicateSelected() {
+        if (!this.selectedNode) return;
+        const n = Store.state.nodes.find(x => x.id === this.selectedNode.id);
+        if (!n) return;
+        const nn = Store.addNode({
+          label: n.label + ' (copy)',
+          type: n.type,
+          notes: n.notes,
+          meta: Utils.copy(n.meta || {}),
+          x: (n.x || 0) + 40,
+          y: (n.y || 0) + 30
+        });
+        this.refresh();
+        this.selectNode(nn);
+        Logger.log('Node duplicated.', 'suc');
+      },
+
+      // physics and layout
       togglePhysics() {
         this.physics = !this.physics;
         document.getElementById('t-phys').classList.toggle('active', this.physics);
 
         if (this.physics) {
-          // Unfix all
           Store.state.nodes.forEach(n => { n.fx = null; n.fy = null; });
           this.instance.d3ReheatSimulation();
-          Logger.log("Physics: Flow (Organic)", "inf");
-          UI.setStatus("Physics: ON");
+          Logger.log('Physics: Flow (Organic)', 'inf');
+          UI.setStatus('Physics: ON');
         } else {
-          // Fix all to current
           Store.state.nodes.forEach(n => { n.fx = n.x; n.fy = n.y; });
-          Logger.log("Physics: Steadfast (Fixed)", "inf");
-          UI.setStatus("Physics: OFF");
+          Logger.log('Physics: Steadfast (Fixed)', 'inf');
+          UI.setStatus('Physics: OFF');
         }
 
-        Store.save("Physics toggled");
+        Store.save('Physics toggled');
         this.refresh();
       },
 
-      fit() { if (this.instance) this.instance.zoomToFit(400, 100); },
+      oneShotLayout() {
+        // Temporarily run physics, then pin everything.
+        if (!this.instance) return;
+        const was = this.physics;
+        if (!was) {
+          this.physics = true;
+          document.getElementById('t-phys').classList.add('active');
+          Store.state.nodes.forEach(n => { n.fx = null; n.fy = null; });
+          this.instance.d3ReheatSimulation();
+        }
 
+        UI.toast('Auto layout', 'Running a short physics burst to spread nodes, then pinning.', 1600);
+        Logger.log('Auto layout: burst...', 'inf');
+
+        setTimeout(() => {
+          // pin results
+          this.physics = false;
+          document.getElementById('t-phys').classList.remove('active');
+          Store.sync();
+          Store.state.nodes.forEach(n => { n.fx = n.x; n.fy = n.y; });
+          Store.save('Auto layout applied');
+          this.refresh();
+          UI.setStatus('Auto layout done.');
+          Logger.log('Auto layout done.', 'suc');
+        }, 1400);
+      },
+
+      toggleSnap() {
+        Config.snap.enabled = !Config.snap.enabled;
+        document.getElementById('t-snap').classList.toggle('active', Config.snap.enabled);
+        UI.updateSnapPill();
+        Store.saveUiSettings();
+        Logger.log(`Snap to grid: ${Config.snap.enabled ? 'ON' : 'OFF'}`, 'inf');
+      },
+
+      // view
+      fit() { if (this.instance) this.instance.zoomToFit(400, 100); },
       zoom(d) {
         if (!this.instance) return;
         const z = this.instance.zoom();
         this.instance.zoom(Utils.clamp(z + d * 0.5, 0.2, 20), 250);
       },
-
       resetView() {
         if (!this.instance) return;
         this.instance.centerAt(0, 0, 450);
         this.instance.zoom(1.2, 450);
       },
 
-      // Adding nodes
+      // add nodes
       addManual() {
-        // Keep original functionality (prompt) and add improved modal option if user cancels prompt
-        const l = prompt("Label:");
-        if (l) {
-          const c = this.safeScreenCenterGraphCoords();
-          Store.addNode({ label: l, x: c.x, y: c.y, type: 'default' });
-          this.refresh();
-          Logger.log(`Added: ${l}`, "suc");
-          return;
-        }
-        // If user cancels, do nothing (preserve behavior).
+        const l = prompt('Label:');
+        if (!l) return;
+        const c = this.safeScreenCenterGraphCoords();
+        const n = Store.addNode({ label: l, x: c.x, y: c.y });
+        this.refresh();
+        this.selectNode(n);
+        Logger.log(`Added: ${l}`, 'suc');
       },
 
       safeScreenCenterGraphCoords() {
@@ -979,24 +1164,25 @@
           const r = el.getBoundingClientRect();
           const c = this.instance.screen2GraphCoords(r.width / 2, r.height / 2);
           x = c.x; y = c.y;
-        } catch (e) {}
+        } catch {}
         return { x, y };
       },
 
-      openAddNodeModal(pos = null, prefill = {}) {
+      openAddNodeModal(pos = null, prefill = {}, opts = {}) {
         const p = pos || { x: this.mouse.gx, y: this.mouse.gy };
-        UI.openModal("Add Node", (close) => {
-          const types = Object.keys(Config.colors);
+        const types = Object.keys(Config.colors);
+
+        UI.openModal('Add Node', () => {
           return `
             <div class="m-grid">
               <div class="form-row">
                 <label>LABEL</label>
-                <input id="m-label" value="${Utils.escapeHtml(prefill.label ?? '')}" placeholder="e.g. example.com / 1.2.3.4 / John Doe" />
+                <input id="m-label" value="${Utils.escapeHtml(prefill.label ?? '')}" placeholder="e.g. example.com / 1.2.3.4 / user@example.com" />
               </div>
               <div class="form-row">
                 <label>TYPE</label>
                 <select id="m-type">
-                  ${types.map(t => `<option value="${Utils.escapeHtml(t)}"${(prefill.type ?? 'default') === t ? ' selected' : ''}>${Utils.escapeHtml(t)}</option>`).join('')}
+                  ${types.map(t => `<option value="${Utils.escapeHtml(t)}" ${(prefill.type ?? 'default') === t ? 'selected' : ''}>${Utils.escapeHtml(t)}</option>`).join('')}
                 </select>
               </div>
               <div class="form-row" style="grid-column:1 / -1">
@@ -1007,83 +1193,137 @@
             <div style="margin-top:10px; color:#888; font-family:var(--font-mono); font-size:0.72rem">
               Position: x=${Number.isFinite(p.x) ? p.x.toFixed(2) : '0.00'}, y=${Number.isFinite(p.y) ? p.y.toFixed(2) : '0.00'}
             </div>
+            <div style="margin-top:8px; color:#aaa; font-size:0.75rem">
+              Auto-detect: if TYPE is left as <span style="font-family:var(--font-mono)">default</span>, Titan will infer email/ip/domain from the label.
+            </div>
           `;
         }, (close) => {
           const label = (document.getElementById('m-label')?.value ?? '').trim();
-          const type = document.getElementById('m-type')?.value ?? 'default';
+          const type = (document.getElementById('m-type')?.value ?? 'default').trim();
           const notes = (document.getElementById('m-notes')?.value ?? '').trim();
-          if (!label) { Logger.log("Label required.", "err"); return; }
+          if (!label) { Logger.log('Label required.', 'err'); return; }
 
-          const n = Store.addNode({ label, type, notes, x: p.x, y: p.y });
+          // If type left as default, auto-detect.
+          const finalType = (type === 'default') ? Utils.detectType(label) : type;
+
+          const n = Store.addNode({ label, type: finalType, notes, x: p.x, y: p.y });
           this.refresh();
           this.selectNode(n);
+
+          if (typeof opts.onCreate === 'function') {
+            try { opts.onCreate(n); } catch {}
+          }
+
           close();
         });
       },
 
-      // Search
+      // search
       searchDebounce: null,
       search(qRaw) {
         const q = (qRaw ?? '').trim().toLowerCase();
         if (!q) return;
-
         const hits = Store.state.nodes.filter(x => (x.label ?? '').toLowerCase().includes(q));
         if (!hits.length) {
-          Logger.log("Search: no matches.", "wrn");
-          UI.setStatus("Search: no matches");
+          Logger.log('Search: no matches.', 'wrn');
+          UI.setStatus('Search: no matches');
           return;
         }
-
-        // Focus first hit
         const n = hits[0];
         this.selectedNode = n;
         this.selectedLink = null;
         UI.inspNode(n);
-
-        // smooth pan/zoom
         if (this.instance) {
           this.instance.centerAt(n.x, n.y, 600);
           this.instance.zoom(4, 700);
         }
-
-        UI.setStatus(`Search hit: ${n.label} (${hits.length} match${hits.length>1?'es':''})`);
+        UI.setStatus(`Search hit: ${n.label} (${hits.length} match${hits.length > 1 ? 'es' : ''})`);
       },
 
-      // Linking
-      handleClickToLink(n) {
-        // click-to-link: first click sets source, second click creates link
+      // linking
+      handleClickToLink(n, evt) {
+        // In Link tool, click source -> click target to create.
+        // BUGFIX: do NOT clear linkFrom when selecting the node.
         if (!this.linkFrom) {
           this.linkFrom = n;
-          this.selectNode(n);
-          UI.setStatus(`Link mode: select target for ${n.label}`);
-          Logger.log(`Link mode: source set to "${n.label}". Click target node.`, "inf");
+          this.selectNode(n, { keepLinkFrom: true });
+          UI.toast('Link mode', `Source set: ${n.label}. Now click a target node.`, 1400);
+          UI.setStatus(`Link: select target for ${n.label}`);
+          Logger.log(`Link source set to "${n.label}". Click target node.`, 'inf');
           return;
         }
 
         if (this.linkFrom.id === n.id) {
           this.linkFrom = null;
-          UI.setStatus("Link mode: canceled.");
-          Logger.log("Link source cleared.", "wrn");
+          UI.setStatus('Link source cleared.');
+          Logger.log('Link source cleared.', 'wrn');
           return;
         }
 
-        Store.addLink(this.linkFrom.id, n.id, { type: 'rel', label: '' });
-        Logger.log(`Linked ${this.linkFrom.label} -> ${n.label}`, "suc");
-        this.linkFrom = null;
-        UI.setStatus("Link created.");
-        this.refresh();
+        // Optional: hold Alt to open a link properties modal before creating
+        const wantProps = !!evt?.altKey;
+        const src = this.linkFrom;
+        const dst = n;
+
+        const create = (type, label, directed) => {
+          Store.addLink(src.id, dst.id, { type, label, directed });
+          Logger.log(`Linked ${src.label} -> ${dst.label}`, 'suc');
+          UI.setStatus('Link created.');
+          this.linkFrom = null;
+          this.refresh();
+        };
+
+        if (!wantProps) {
+          create('rel', '', true);
+          return;
+        }
+
+        UI.openModal('Create Link', () => {
+          const linkTypes = Object.keys(Config.linkColors).filter(x => !['default'].includes(x));
+          return `
+            <div class="m-grid">
+              <div class="form-row" style="grid-column:1 / -1">
+                <label>FROM → TO</label>
+                <input value="${Utils.escapeHtml(src.label)} → ${Utils.escapeHtml(dst.label)}" disabled />
+              </div>
+              <div class="form-row">
+                <label>TYPE</label>
+                <select id="m-ltype">
+                  ${linkTypes.map(t => `<option value="${Utils.escapeHtml(t)}" ${t==='rel'?'selected':''}>${Utils.escapeHtml(t)}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-row">
+                <label>LABEL (optional)</label>
+                <input id="m-llabel" placeholder="e.g. A / MX / owns" />
+              </div>
+              <div class="form-row" style="grid-column:1 / -1">
+                <label>DIRECTION</label>
+                <select id="m-ldir">
+                  <option value="true" selected>directed</option>
+                  <option value="false">undirected</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-top:10px; color:#888; font-family:var(--font-mono); font-size:0.72rem">
+              Tip: hold <b>Alt</b> while linking to open this dialog.
+            </div>
+          `;
+        }, (close) => {
+          const type = document.getElementById('m-ltype')?.value ?? 'rel';
+          const label = (document.getElementById('m-llabel')?.value ?? '').trim();
+          const directed = (document.getElementById('m-ldir')?.value ?? 'true') === 'true';
+          create(type, label, directed);
+          close();
+        });
       },
 
-      // Context menu helpers
+      // context
       showCtx(kind, clientX, clientY) {
         this.ctx.kind = kind;
         this.ctx.x = clientX;
         this.ctx.y = clientY;
-
-        // also capture graph coords
         this.ctx.gx = this.mouse.gx;
         this.ctx.gy = this.mouse.gy;
-
         UI.showCtx(kind, clientX, clientY);
       },
 
@@ -1096,10 +1336,14 @@
         UI.hideCtx();
         const n = this.selectedNode;
         if (!n) return;
-        const nx = (Number.isFinite(n.x) ? n.x : 0) + 40;
-        const ny = (Number.isFinite(n.y) ? n.y : 0) + 30;
+        const nx = (Number.isFinite(n.x) ? n.x : 0) + 120;
+        const ny = (Number.isFinite(n.y) ? n.y : 0);
+
         this.openAddNodeModal({ x: nx, y: ny }, { type: 'default' }, {
-          onCreate: null
+          onCreate: (newNode) => {
+            Store.addLink(n.id, newNode.id, { type: 'rel', label: '' });
+            Logger.log(`Linked ${n.label} -> ${newNode.label}`, 'suc');
+          }
         });
       },
 
@@ -1108,7 +1352,30 @@
         if (!this.selectedNode) return;
         Tools.set('link');
         this.linkFrom = this.selectedNode;
-        UI.setStatus(`Link mode: select target for ${this.selectedNode.label}`);
+        UI.setStatus(`Link: select target for ${this.selectedNode.label}`);
+        UI.toast('Link mode', `Source set: ${this.selectedNode.label}. Click a target node.`, 1200);
+      },
+
+      clearGraph() {
+        UI.hideCtx();
+        UI.openModal('Clear Graph', () => {
+          return `
+            <div style="color:#ddd; line-height:1.4">
+              This will remove <b>all</b> nodes and links and cannot be undone after refresh.
+              You can export JSON first if needed.
+            </div>
+            <div style="margin-top:10px; color:#aaa; font-family:var(--font-mono); font-size:0.72rem">
+              Tip: use JSON export as a checkpoint.
+            </div>
+          `;
+        }, (close) => {
+          Store.reset();
+          Store.save('Graph cleared');
+          Graph.refresh();
+          Graph.clearSelection();
+          Logger.log('Graph cleared.', 'suc');
+          close();
+        });
       }
     };
 
@@ -1121,15 +1388,15 @@
         this.cur = t;
         document.getElementById('t-move').classList.toggle('active', t === 'move');
         document.getElementById('t-link').classList.toggle('active', t === 'link');
-
         UI.updateModePill();
 
         if (t === 'link') {
-          Logger.log("Link Mode: drag rubberband OR click-to-link.", "inf");
-          UI.setStatus("Link Mode");
+          Logger.log('Link Mode: click source then target. Drag also works.', 'inf');
+          UI.setStatus('Link Mode');
+          UI.toast('Link tool', 'Click a source node, then click a target node to link.', 1400);
         } else {
-          Logger.log("Move Mode.", "inf");
-          UI.setStatus("Move Mode");
+          Logger.log('Move Mode.', 'inf');
+          UI.setStatus('Move Mode');
           Graph.linkFrom = null;
         }
 
@@ -1143,8 +1410,6 @@
       applyNodeDrag() {
         if (!Graph.instance) return;
         const eff = this.effective();
-        // In link mode, disable node dragging (prevents accidental node movement while linking)
-        // In move mode, enable dragging
         if (typeof Graph.instance.enableNodeDrag === 'function') {
           Graph.instance.enableNodeDrag(eff === 'move');
         }
@@ -1154,8 +1419,7 @@
 
     // --- TRANSFORMS ---
     const Transforms = {
-      async fetch(u) {
-        // Keep original proxies but improve robustness
+      async fetchJsonOrText(u) {
         const proxies = [
           (url) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
           (url) => 'https://corsproxy.io/?' + encodeURIComponent(url),
@@ -1171,13 +1435,18 @@
             const ct = (r.headers.get('content-type') || '').toLowerCase();
             if (ct.includes('application/json') || ct.includes('text/json')) return await r.json();
             const txt = await r.text();
-            // attempt json parse fallback
-            try { return JSON.parse(txt); } catch (e) { return { raw: txt }; }
+            try { return JSON.parse(txt); } catch { return { raw: txt }; }
           } catch (e) {
             lastErr = e;
           }
         }
-        throw (lastErr || new Error("Conn Fail"));
+        throw (lastErr || new Error('Conn Fail'));
+      },
+
+      // dns.google helper
+      async dnsResolve(name, type) {
+        const url = `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}`;
+        return await this.fetchJsonOrText(url);
       },
 
       async run(t) {
@@ -1185,68 +1454,184 @@
         if (!n) return;
 
         UI.hideCtx();
-        Logger.log(`Running ${t}...`, "inf");
+        Logger.log(`Running ${t}...`, 'inf');
         UI.setStatus(`Running ${t}...`);
 
         try {
+          const node = Store.state.nodes.find(x => x.id === n.id) || n;
+          const label = String(node.label || '').trim();
+
           if (t === 'dns') {
-            const d = await this.fetch(`https://dns.google/resolve?name=${encodeURIComponent(n.label)}&type=A`);
-            if (d && d.Answer) {
-              for (const r of d.Answer) {
-                if (r.type === 1 && r.data) {
-                  const ip = Store.addNode({ label: r.data, type: 'ip', x: (n.x || 0) + 60, y: (n.y || 0) + 40 });
-                  Store.addLink(n.id, ip.id, { type: 'resolves', label: 'A' });
-                }
+            const d = await this.dnsResolve(label, 'A');
+            const answers = d?.Answer || [];
+            let added = 0;
+            // place children to the right to avoid link crossing label
+            const baseX = (node.x || 0) + 160;
+            let baseY = (node.y || 0);
+
+            for (const r of answers) {
+              if (r.type === 1 && r.data) {
+                const ip = Store.addNode({ label: r.data, type: 'ip', x: baseX, y: baseY });
+                Store.addLink(node.id, ip.id, { type: 'resolves', label: 'A' });
+                baseY += 60;
+                added++;
               }
-              n.meta = { ...(n.meta || {}), dns: d.Answer };
-              Store.save("DNS resolved");
-              Logger.log("DNS Resolved", "suc");
-            } else {
-              Logger.log("No DNS A answers.", "wrn");
             }
-          } else if (t === 'whois') {
-            const isIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(n.label.trim());
-            const u = isIp ? `https://rdap.arin.net/registry/ip/${encodeURIComponent(n.label)}` : `https://rdap.org/domain/${encodeURIComponent(n.label)}`;
-            const d = await this.fetch(u);
-            n.meta = { ...(n.meta || {}), whois: d };
-            Store.save("WHOIS updated");
-            Logger.log("WHOIS Done", "suc");
-          } else if (t === 'geoip') {
-            const d = await this.fetch(`https://ipapi.co/${encodeURIComponent(n.label)}/json/`);
+
+            node.meta = { ...(node.meta || {}), dns: d };
+            Store.save(`DNS resolved (${added} A record${added===1?'':'s'})`);
+            Logger.log(`DNS Resolved (${added})`, added ? 'suc' : 'wrn');
+          }
+
+          else if (t === 'whois') {
+            const isIp = Utils.isIp(label);
+            const u = isIp ? `https://rdap.arin.net/registry/ip/${encodeURIComponent(label)}` : `https://rdap.org/domain/${encodeURIComponent(label)}`;
+            const d = await this.fetchJsonOrText(u);
+            node.meta = { ...(node.meta || {}), whois: d };
+            Store.save('WHOIS updated');
+            Logger.log('WHOIS Done', 'suc');
+          }
+
+          else if (t === 'geoip') {
+            const d = await this.fetchJsonOrText(`https://ipapi.co/${encodeURIComponent(label)}/json/`);
             if (d && d.city) {
-              const loc = Store.addNode({ label: `${d.city}, ${d.country_code}`, type: 'location', x: (n.x || 0), y: (n.y || 0) + 70 });
-              Store.addLink(n.id, loc.id, { type: 'located', label: '' });
-              n.meta = { ...(n.meta || {}), geoip: d };
-              Store.save("GeoIP updated");
-              Logger.log("GeoIP Done", "suc");
+              const loc = Store.addNode({ label: `${d.city}, ${d.country_code}`, type: 'location', x: (node.x || 0) + 160, y: (node.y || 0) + 60 });
+              Store.addLink(node.id, loc.id, { type: 'located', label: '' });
+              node.meta = { ...(node.meta || {}), geoip: d };
+              Store.save('GeoIP updated');
+              Logger.log('GeoIP Done', 'suc');
             } else {
-              Logger.log("GeoIP: no location found (check IP).", "wrn");
+              Logger.log('GeoIP: no location found (check IP).', 'wrn');
             }
           }
 
-          UI.inspNode(Store.state.nodes.find(x => x.id === n.id) || n);
-          UI.setStatus("Ready.");
+          // Email transforms
+          else if (t === 'email_domain') {
+            if (!Utils.isEmail(label)) {
+              Logger.log('Not a valid email address (syntax).', 'wrn');
+            } else {
+              const domain = label.split('@').pop();
+              const dn = Store.addNode({ label: domain, type: 'domain', x: (node.x || 0) + 160, y: (node.y || 0) });
+              Store.addLink(node.id, dn.id, { type: 'email_domain', label: '' });
+              node.meta = { ...(node.meta || {}), email: { domain } };
+              Store.save('Email domain extracted');
+              Logger.log('Email domain extracted.', 'suc');
+            }
+          }
+
+          else if (t === 'email_mx') {
+            if (!Utils.isEmail(label)) {
+              Logger.log('Not a valid email address (syntax).', 'wrn');
+            } else {
+              const domain = label.split('@').pop();
+              const d = await this.dnsResolve(domain, 'MX');
+              const ans = d?.Answer || [];
+              node.meta = { ...(node.meta || {}), mx: d };
+
+              // Build MX nodes (as domain nodes) and link
+              let added = 0;
+              const baseX = (node.x || 0) + 160;
+              let baseY = (node.y || 0) + 70;
+              for (const r of ans) {
+                // MX record type is 15, data like "10 mx1.example.com."
+                if (r.type === 15 && r.data) {
+                  const parts = String(r.data).split(' ');
+                  const host = parts.slice(1).join(' ').replace(/\.$/, '') || r.data;
+                  const mxNode = Store.addNode({ label: host, type: 'domain', x: baseX, y: baseY });
+                  Store.addLink(node.id, mxNode.id, { type: 'mx', label: parts[0] || '' });
+                  baseY += 60;
+                  added++;
+                }
+              }
+
+              Store.save(`MX lookup (${added})`);
+              Logger.log(`MX lookup done (${added})`, added ? 'suc' : 'wrn');
+            }
+          }
+
+          else if (t === 'email_spf') {
+            if (!Utils.isEmail(label)) {
+              Logger.log('Not a valid email address (syntax).', 'wrn');
+            } else {
+              const domain = label.split('@').pop();
+              const d = await this.dnsResolve(domain, 'TXT');
+              const ans = d?.Answer || [];
+              const spf = ans.filter(r => r.type === 16 && typeof r.data === 'string' && r.data.toLowerCase().includes('v=spf1'));
+              node.meta = { ...(node.meta || {}), spf: spf.length ? spf : d };
+
+              // Create a note node summarizing SPF
+              if (spf.length) {
+                const summary = spf.map(x => x.data).join('\n');
+                const spfNode = Store.addNode({ label: 'SPF', type: 'default', x: (node.x || 0) + 160, y: (node.y || 0) + 60, notes: summary });
+                Store.addLink(node.id, spfNode.id, { type: 'spf', label: '' });
+              }
+
+              Store.save('SPF lookup');
+              Logger.log(spf.length ? 'SPF found.' : 'SPF not found (no v=spf1 TXT).', spf.length ? 'suc' : 'wrn');
+            }
+          }
+
+          else if (t === 'email_dmarc') {
+            if (!Utils.isEmail(label)) {
+              Logger.log('Not a valid email address (syntax).', 'wrn');
+            } else {
+              const domain = label.split('@').pop();
+              const dmarcName = `_dmarc.${domain}`;
+              const d = await this.dnsResolve(dmarcName, 'TXT');
+              const ans = d?.Answer || [];
+              const dmarc = ans.filter(r => r.type === 16 && typeof r.data === 'string' && r.data.toLowerCase().includes('v=dmarc1'));
+              node.meta = { ...(node.meta || {}), dmarc: dmarc.length ? dmarc : d };
+
+              if (dmarc.length) {
+                const summary = dmarc.map(x => x.data).join('\n');
+                const dmarcNode = Store.addNode({ label: 'DMARC', type: 'default', x: (node.x || 0) + 160, y: (node.y || 0) + 120, notes: summary });
+                Store.addLink(node.id, dmarcNode.id, { type: 'dmarc', label: '' });
+              }
+
+              Store.save('DMARC lookup');
+              Logger.log(dmarc.length ? 'DMARC found.' : 'DMARC not found (no v=DMARC1 TXT).', dmarc.length ? 'suc' : 'wrn');
+            }
+          }
+
+          // refresh inspector after meta updates
+          const fresh = Store.state.nodes.find(x => x.id === node.id) || node;
+          UI.inspNode(fresh);
+          Graph.refresh();
+          UI.setStatus('Ready.');
+
         } catch (e) {
-          Logger.log(e.message || String(e), "err");
-          UI.setStatus("Transform failed.");
+          Logger.log(e.message || String(e), 'err');
+          UI.setStatus('Transform failed.');
         }
       }
     };
 
     // --- UI ---
     const UI = {
+      toastTimer: null,
+
       setStatus(s) {
         document.getElementById('l-stat').innerText = s;
+      },
+
+      toast(title, msg, ms = 1400) {
+        const box = document.getElementById('toast');
+        document.getElementById('toast-title').innerText = title;
+        document.getElementById('toast-msg').innerText = msg;
+        box.style.display = 'block';
+        clearTimeout(this.toastTimer);
+        this.toastTimer = setTimeout(() => { box.style.display = 'none'; }, ms);
       },
 
       stats() {
         document.getElementById('st-n').innerText = Store.state.nodes.length;
         document.getElementById('st-l').innerText = Store.state.links.length;
 
-        // selection status
         if (Graph.selectedNode) {
           document.getElementById('st-sel').innerText = Graph.selectedNode.label;
-          document.getElementById('st-sub').innerText = `Type: ${Graph.selectedNode.type} • Right-click for actions`;
+          const type = Graph.selectedNode.type;
+          const extra = (Tools.effective() === 'link' && Graph.linkFrom) ? ` • Linking from: ${Graph.linkFrom.label}` : '';
+          document.getElementById('st-sub').innerText = `Type: ${type}${extra} • Right-click for actions`;
         } else if (Graph.selectedLink) {
           const s = Utils.endpointId(Graph.selectedLink.source);
           const t = Utils.endpointId(Graph.selectedLink.target);
@@ -1256,38 +1641,122 @@
           document.getElementById('st-sub').innerText = `Link: ${(Graph.selectedLink.type || 'rel')} • Right-click for actions`;
         } else {
           document.getElementById('st-sel').innerText = 'None';
-          document.getElementById('st-sub').innerText = `Right-click background to add nodes.`;
+          document.getElementById('st-sub').innerText = 'Right-click background to add nodes.';
         }
+
+        // Keep pills in sync
+        this.updateModePill();
+        this.updateSnapPill();
       },
 
       updateModePill() {
         const eff = Tools.effective();
         const pill = document.getElementById('mode-pill');
-        pill.textContent = `MODE: ${eff.toUpperCase()}${Tools.shiftLink ? ' (SHIFT)' : ''}`;
+        if (eff === 'link' && Graph.linkFrom) {
+          pill.textContent = `MODE: LINK (SRC SET)`;
+        } else {
+          pill.textContent = `MODE: ${eff.toUpperCase()}${Tools.shiftLink ? ' (SHIFT)' : ''}`;
+        }
       },
 
-      toggleInsp() { document.body.classList.toggle('insp-closed'); },
-      toggleLogs() { document.body.classList.toggle('log-min'); },
-      toggleHints() { document.body.classList.toggle('show-hints'); },
+      updateSnapPill() {
+        const pill = document.getElementById('snap-pill');
+        pill.textContent = `SNAP: ${Config.snap.enabled ? 'ON' : 'OFF'}`;
+        document.getElementById('t-snap').classList.toggle('active', Config.snap.enabled);
+      },
+
+      toggleInsp() { document.body.classList.toggle('insp-closed'); Store.saveUiSettings(); },
+      toggleLogs() { document.body.classList.toggle('log-min'); Store.saveUiSettings(); },
+      toggleHints() { document.body.classList.toggle('show-hints'); Store.saveUiSettings(); },
 
       clear() {
         document.getElementById('p-cont').innerHTML = '<div style="padding:40px;text-align:center;color:#666">Select entity</div>';
         this.stats();
       },
 
+      pinToggle(id) {
+        const n = Store.state.nodes.find(x => x.id === id);
+        if (!n) return;
+        const pinned = n.fx !== null && n.fy !== null;
+        if (pinned) {
+          Store.updateNode(id, { fx: null, fy: null });
+          Logger.log('Node unpinned.', 'inf');
+        } else {
+          Store.updateNode(id, { fx: n.x, fy: n.y });
+          Logger.log('Node pinned.', 'inf');
+        }
+        Graph.refresh();
+      },
+
+      editJson(nodeId) {
+        const n = Store.state.nodes.find(x => x.id === nodeId);
+        if (!n) return;
+        const initial = JSON.stringify(n.meta || {}, null, 2);
+
+        this.openModal('Edit Node JSON', () => {
+          return `
+            <div class="form-row">
+              <label>JSON (meta)</label>
+              <textarea id="m-json" style="min-height:260px">${Utils.escapeHtml(initial)}</textarea>
+            </div>
+            <div style="margin-top:8px; color:#888; font-family:var(--font-mono); font-size:0.72rem">
+              This edits only node.meta. Invalid JSON will be rejected.
+            </div>
+          `;
+        }, (close) => {
+          const txt = document.getElementById('m-json')?.value ?? '{}';
+          try {
+            const obj = JSON.parse(txt);
+            Store.updateNode(nodeId, { meta: obj });
+            close();
+            Logger.log('Node meta updated.', 'suc');
+          } catch {
+            Logger.log('Invalid JSON.', 'err');
+          }
+        });
+      },
+
       inspNode(n) {
         if (!n) return;
         const c = document.getElementById('p-cont');
-        const json = n.meta ? JSON.stringify(n.meta, null, 2) : "";
-
+        const json = n.meta ? JSON.stringify(n.meta, null, 2) : '';
         const types = Object.keys(Config.colors);
-        const pinned = !(n.fx === null || n.fx === undefined) && !(n.fy === null || n.fy === undefined);
+        const pinned = n.fx !== null && n.fy !== null;
+
+        // Node-type specific quick actions
+        let quick = '';
+        if (n.type === 'email') {
+          quick = `
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:6px">
+              <button class="btn btn-sec" onclick="Transforms.run('email_domain')">DOMAIN</button>
+              <button class="btn btn-sec" onclick="Transforms.run('email_mx')">MX</button>
+              <button class="btn btn-sec" onclick="Transforms.run('email_spf')">SPF</button>
+              <button class="btn btn-sec" onclick="Transforms.run('email_dmarc')">DMARC</button>
+            </div>
+          `;
+        }
+        if (n.type === 'domain') {
+          quick = `
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:6px">
+              <button class="btn btn-sec" onclick="Transforms.run('dns')">DNS A</button>
+              <button class="btn btn-sec" onclick="Transforms.run('whois')">WHOIS</button>
+            </div>
+          `;
+        }
+        if (n.type === 'ip') {
+          quick = `
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:6px">
+              <button class="btn btn-sec" onclick="Transforms.run('whois')">RDAP</button>
+              <button class="btn btn-sec" onclick="Transforms.run('geoip')">GEOIP</button>
+            </div>
+          `;
+        }
 
         c.innerHTML = `
           <div class="p-sec">
             <div class="form-row">
               <label>LABEL</label>
-              <input value="${Utils.escapeHtml(n.label)}" onchange="Store.updateNode('${n.id}', {label:this.value})">
+              <input value="${Utils.escapeHtml(n.label)}" onchange="Store.updateNode('${n.id}', {label:this.value}); UI.inspNode(Store.state.nodes.find(x=>x.id==='${n.id}'))">
             </div>
 
             <div class="form-row">
@@ -1304,8 +1773,15 @@
 
             <div style="display:flex; gap:10px; flex-wrap:wrap">
               <button class="btn btn-sec" onclick="Graph.instance.centerAt(${Number.isFinite(n.x)?n.x:0}, ${Number.isFinite(n.y)?n.y:0}, 500); Graph.instance.zoom(4, 600)">FOCUS</button>
-              <button class="btn btn-sec" onclick="Tools.set('link'); Graph.linkFrom = Store.state.nodes.find(x=>x.id==='${n.id}'); UI.setStatus('Link mode: select target for ${Utils.escapeHtml(n.label)}')">LINK FROM</button>
+              <button class="btn btn-sec" onclick="Tools.set('link'); Graph.linkFrom = Store.state.nodes.find(x=>x.id==='${n.id}'); UI.setStatus('Link: select target for ${Utils.escapeHtml(n.label)}'); UI.updateModePill();">LINK FROM</button>
               <button class="btn btn-sec" onclick="UI.pinToggle('${n.id}')">${pinned ? 'UNPIN' : 'PIN'}</button>
+              <button class="btn btn-sec" onclick="Graph.duplicateSelected()">DUPLICATE</button>
+            </div>
+
+            ${quick}
+
+            <div style="margin-top:10px; color:#888; font-family:var(--font-mono); font-size:0.72rem">
+              Tip: Link tool supports click-to-link. Hold <b>Alt</b> while linking to set link type/label.
             </div>
           </div>
 
@@ -1314,7 +1790,7 @@
               <div style="color:var(--muted); font-size:0.75rem">RAW DATA</div>
               <button class="btn btn-sec" style="padding:3px 10px" onclick="UI.editJson('${n.id}')">EDIT JSON</button>
             </div>
-            <div class="json-box" id="json-box">${Utils.escapeHtml(json)}</div>
+            <div class="json-box">${Utils.escapeHtml(json)}</div>
           </div>
 
           <div class="p-sec">
@@ -1333,8 +1809,7 @@
         const tid = Utils.endpointId(l.target);
         const sn = Store.state.nodes.find(n => n.id === sid);
         const tn = Store.state.nodes.find(n => n.id === tid);
-        const json = l.meta ? JSON.stringify(l.meta, null, 2) : "";
-
+        const json = l.meta ? JSON.stringify(l.meta, null, 2) : '';
         const linkTypes = Object.keys(Config.linkColors).filter(x => x !== 'default');
 
         c.innerHTML = `
@@ -1347,7 +1822,6 @@
               <label>TYPE</label>
               <select onchange="Store.updateLink('${l.id}', {type:this.value}); UI.inspLink(Store.state.links.find(x=>x.id==='${l.id}'))">
                 ${linkTypes.map(t => `<option value="${Utils.escapeHtml(t)}" ${(l.type||'rel')===t?'selected':''}>${Utils.escapeHtml(t)}</option>`).join('')}
-                <option value="rel" ${(l.type||'rel')==='rel'?'selected':''}>rel</option>
               </select>
             </div>
 
@@ -1362,6 +1836,10 @@
                 <option value="true" ${(l.directed===false)?'':'selected'}>directed</option>
                 <option value="false" ${(l.directed===false)?'selected':''}>undirected</option>
               </select>
+            </div>
+
+            <div style="display:flex; gap:10px; flex-wrap:wrap">
+              <button class="btn btn-sec" onclick="Graph.reverseSelectedLink()">REVERSE</button>
             </div>
           </div>
 
@@ -1379,54 +1857,10 @@
         this.stats();
       },
 
-      pinToggle(id) {
-        const n = Store.state.nodes.find(x => x.id === id);
-        if (!n) return;
-        const pinned = !(n.fx === null || n.fx === undefined) && !(n.fy === null || n.fy === undefined);
-        if (pinned) {
-          Store.updateNode(id, { fx: null, fy: null });
-          Logger.log("Node unpinned.", "inf");
-        } else {
-          Store.updateNode(id, { fx: n.x, fy: n.y });
-          Logger.log("Node pinned.", "inf");
-        }
-        Graph.refresh();
-      },
-
-      editJson(nodeId) {
-        const n = Store.state.nodes.find(x => x.id === nodeId);
-        if (!n) return;
-
-        const initial = JSON.stringify(n.meta || {}, null, 2);
-
-        this.openModal("Edit Node JSON", () => {
-          return `
-            <div class="form-row">
-              <label>JSON (meta)</label>
-              <textarea id="m-json" style="min-height:240px">${Utils.escapeHtml(initial)}</textarea>
-            </div>
-            <div style="margin-top:8px; color:#888; font-family:var(--font-mono); font-size:0.72rem">
-              This edits only node.meta. Invalid JSON will be rejected.
-            </div>
-          `;
-        }, (close) => {
-          const txt = document.getElementById('m-json')?.value ?? '{}';
-          try {
-            const obj = JSON.parse(txt);
-            Store.updateNode(nodeId, { meta: obj });
-            close();
-            Logger.log("Node meta updated.", "suc");
-          } catch (e) {
-            Logger.log("Invalid JSON.", "err");
-          }
-        });
-      },
-
-      // Context menu
       showCtx(kind, x, y) {
         const m = document.getElementById('ctx');
 
-        // Toggle visibility of menu sections based on context
+        // Toggle menu section per context
         m.querySelectorAll('[data-ctx]').forEach(el => {
           el.style.display = (el.getAttribute('data-ctx') === kind) ? '' : 'none';
         });
@@ -1435,7 +1869,16 @@
           el.style.display = (ctx === kind) ? '' : 'none';
         });
 
-        // Position (clamp to viewport)
+        // Additional filtering for node types
+        if (kind === 'node') {
+          const nt = Graph.selectedNode?.type || 'default';
+          m.querySelectorAll('[data-ctx="node"][data-node-types]').forEach(el => {
+            const allow = (el.getAttribute('data-node-types') || '').split(',').map(s => s.trim());
+            el.style.display = allow.includes(nt) ? '' : 'none';
+          });
+        }
+
+        // Position and clamp
         const vw = window.innerWidth, vh = window.innerHeight;
         m.style.display = 'block';
         const rect = m.getBoundingClientRect();
@@ -1447,7 +1890,6 @@
 
       hideCtx() { document.getElementById('ctx').style.display = 'none'; },
 
-      // Modal
       openModal(title, bodyFn, onOk) {
         document.getElementById('m-title').innerText = title;
         document.getElementById('m-body').innerHTML = bodyFn(this.closeModal.bind(this));
@@ -1485,9 +1927,9 @@
         const txt = document.getElementById('l-cont').innerText;
         try {
           await navigator.clipboard.writeText(txt);
-          this.log("Logs copied.", "suc");
-        } catch (e) {
-          this.log("Clipboard blocked by browser context.", "wrn");
+          this.log('Logs copied.', 'suc');
+        } catch {
+          this.log('Clipboard blocked by browser context.', 'wrn');
         }
       },
       clear() { document.getElementById('l-cont').innerHTML = ''; }
@@ -1497,32 +1939,45 @@
     const IO = {
       export() {
         const payload = Utils.copy(Store.state);
-        payload._meta = { app: "TitanGraph", version: Config.version, exportedAt: new Date().toISOString() };
+        payload._meta = { app: 'TitanGraph', version: Config.version, exportedAt: new Date().toISOString() };
         const a = document.createElement('a');
-        a.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
-        a.download = "titan.json";
+        a.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
+        a.download = 'titan.json';
         a.click();
-        Logger.log("Exported JSON.", "suc");
+        Logger.log('Exported JSON.', 'suc');
+      },
+
+      exportPng() {
+        // Export the ForceGraph canvas as a PNG
+        try {
+          const canvas = document.querySelector('#graph-canvas canvas');
+          if (!canvas) { Logger.log('PNG export failed: canvas not found.', 'err'); return; }
+          const a = document.createElement('a');
+          a.download = `titan_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.png`;
+          a.href = canvas.toDataURL('image/png');
+          a.click();
+          Logger.log('Exported PNG.', 'suc');
+        } catch (e) {
+          Logger.log('PNG export failed.', 'err');
+        }
       },
 
       import(el) {
         const f = el.files[0];
         if (!f) return;
-
         const r = new FileReader();
         r.onload = e => {
           try {
             const obj = JSON.parse(e.target.result);
             Store.state = Store.normalizeState(obj);
-            // if physics off, keep pinned
             Store.ensurePinning(Graph.physics);
-            Store.save("Imported");
+            Store.save('Imported');
             Graph.refresh();
-            Logger.log("Imported", "suc");
-          } catch (err) {
-            Logger.log("Import failed (invalid JSON).", "err");
+            Logger.log('Imported', 'suc');
+          } catch {
+            Logger.log('Import failed (invalid JSON).', 'err');
           } finally {
-            el.value = "";
+            el.value = '';
           }
         };
         r.readAsText(f);
@@ -1533,19 +1988,18 @@
 
     // --- BOOT ---
     window.onload = () => {
-      // Guard: library missing
       if (typeof ForceGraph !== 'function') {
-        Logger.log("ForceGraph is not available. Verify the script tag and network.", "err");
-        UI.setStatus("Engine load failed.");
+        Logger.log('ForceGraph is not available. Verify the script tag and network.', 'err');
+        UI.setStatus('Engine load failed.');
         return;
       }
 
       Store.init();
       Graph.init();
-      Logger.log("TitanGraph v14.1 Online", "suc");
-      UI.setStatus("Ready.");
+      Logger.log(`TitanGraph v${Config.version} Online`, 'suc');
+      UI.setStatus('Ready.');
 
-      // Search: improved + preserves original behavior by still centering on match
+      // Search
       const sIn = document.getElementById('s-in');
       sIn.addEventListener('input', () => {
         clearTimeout(Graph.searchDebounce);
@@ -1553,17 +2007,36 @@
       });
 
       // Global click closes context menu
-      document.addEventListener('click', () => UI.hideCtx());
+      document.addEventListener('click', (e) => {
+        // Don't close if clicking inside modal
+        if (document.getElementById('modal').style.display === 'block') return;
+        UI.hideCtx();
+      });
+
+      // Paste-to-add: if user pastes an email/ip/domain, create node at cursor
+      document.addEventListener('paste', (e) => {
+        const txt = (e.clipboardData?.getData('text') || '').trim();
+        if (!txt) return;
+        if (!(Utils.isEmail(txt) || Utils.isIp(txt) || Utils.isDomainLike(txt))) return;
+
+        const pos = Graph.mouse.inside ? { x: Graph.mouse.gx, y: Graph.mouse.gy } : Graph.safeScreenCenterGraphCoords();
+        const n = Store.addNode({ label: txt, x: pos.x, y: pos.y });
+        Graph.refresh();
+        Graph.selectNode(n);
+        UI.toast('Pasted', `Added node: ${txt}`, 1200);
+      });
 
       // Keybindings
       document.addEventListener('keydown', (e) => {
-        // prevent browser defaults where appropriate
         if (e.ctrlKey && (e.key === 's' || e.key === 'S')) { e.preventDefault(); IO.export(); }
         if (e.ctrlKey && (e.key === 'o' || e.key === 'O')) { e.preventDefault(); document.getElementById('f-in').click(); }
         if (e.ctrlKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); document.getElementById('s-in').focus(); }
+        if (e.ctrlKey && (e.key === 'p' || e.key === 'P')) { e.preventDefault(); IO.exportPng(); }
 
         if (e.ctrlKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); App.undo(); }
         if (e.ctrlKey && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); App.redo(); }
+
+        if (e.ctrlKey && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); Graph.duplicateSelected(); }
 
         if (e.key === 'Delete') { e.preventDefault(); Graph.delSel(); }
 
@@ -1573,7 +2046,8 @@
           Graph.linkFrom = null;
           Graph.linkDrag.active = false;
           UI.closeModal();
-          UI.setStatus("Ready.");
+          UI.setStatus('Ready.');
+          UI.updateModePill();
         }
 
         // tool switches
@@ -1582,14 +2056,18 @@
           if (e.key === 'l' || e.key === 'L') Tools.set('link');
           if (e.key === '?' ) UI.toggleHints();
 
-          // Add node at cursor
           if (e.key === 'n' || e.key === 'N') {
             if (Graph.mouse.inside) {
               e.preventDefault();
               Graph.openAddNodeModal({ x: Graph.mouse.gx, y: Graph.mouse.gy });
             } else {
-              Graph.addManual(); // fallback
+              Graph.addManual();
             }
+          }
+
+          // quick email transforms
+          if (Graph.selectedNode && Graph.selectedNode.type === 'email') {
+            if (e.key === 'd' || e.key === 'D') { /* reserved for ctrl+d duplicate */ }
           }
         }
 
@@ -1606,6 +2084,33 @@
           Tools.applyNodeDrag();
         }
       });
+
+      // Snap behavior: when physics off and move drag ends, snap if enabled
+      // ForceGraph does not expose a direct drag-end callback when node drag is enabled; instead we rely on syncing
+      // positions periodically and snapping on mouseup in move mode.
+      window.addEventListener('mouseup', () => {
+        if (!Graph.snapEnabled()) return;
+        if (Tools.effective() !== 'move') return;
+        // Snap selected node if pinned
+        if (Graph.selectedNode) {
+          const id = Graph.selectedNode.id;
+          const n = Store.state.nodes.find(x => x.id === id);
+          if (!n) return;
+          // if node is pinned, snap its pinned coords
+          if (n.fx !== null && n.fy !== null) {
+            const step = Config.snap.step;
+            const sx = Math.round((n.fx ?? n.x) / step) * step;
+            const sy = Math.round((n.fy ?? n.y) / step) * step;
+            Store.updateNode(id, { x: sx, y: sy, fx: sx, fy: sy });
+            UI.setStatus('Snapped.');
+          }
+        }
+      });
+
+      // Initial pill sync
+      UI.stats();
+      UI.updateModePill();
+      UI.updateSnapPill();
     };
   </script>
 </body>
