@@ -3,28 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TitanGraph v13 | Robust Edition</title>
+    <title>TitanGraph v14 | 2D Precision</title>
     
-    <!-- LIBRARIES -->
-    <script src="//unpkg.com/three"></script>
-    <script src="//unpkg.com/three-spritetext"></script>
+    <!-- CORE ENGINE (2D ONLY) -->
     <script src="//unpkg.com/force-graph"></script>
-    <script src="//unpkg.com/3d-force-graph"></script>
     
-    <!-- ICONS -->
+    <!-- ICONS & FONTS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --bg: #050505;
-            --panel: #111;
+            --bg: #0a0a0a;
+            --panel: #141414;
             --border: #333;
-            --accent: #00f2ff;
+            --accent: #00ff9d; /* Cyber Green */
+            --accent-dim: rgba(0, 255, 157, 0.1);
             --text: #eee;
-            --muted: #777;
+            --muted: #888;
             --danger: #ff4444;
-            --success: #00ff9d;
             --font-ui: 'Inter', sans-serif;
             --font-mono: 'JetBrains Mono', monospace;
         }
@@ -32,31 +29,42 @@
         * { box-sizing: border-box; outline: none; user-select: none; }
         body { margin: 0; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 13px; }
 
-        /* GRID LAYOUT */
+        /* LAYOUT */
         #app { display: grid; grid-template-columns: 60px 1fr 350px; grid-template-rows: 50px 1fr 200px; height: 100vh; width: 100vw; }
-        
+        body.log-min #app { grid-template-rows: 50px 1fr 35px; }
+        body.insp-closed #app { grid-template-columns: 60px 1fr 0px; }
+
         /* HEADER */
         header { grid-column: 1 / -1; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 100; }
-        .brand { font-family: var(--font-mono); font-weight: 700; color: var(--accent); font-size: 1.2rem; }
+        .brand { font-family: var(--font-mono); font-weight: 700; color: var(--accent); font-size: 1.2rem; letter-spacing: 1px; }
         .tools { display: flex; gap: 10px; }
 
         /* TOOLBAR */
         #toolbar { grid-column: 1; grid-row: 2 / -1; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding-top: 20px; gap: 15px; z-index: 90; }
-        .t-btn { width: 40px; height: 40px; border-radius: 8px; background: transparent; border: 1px solid transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; font-size: 1.1rem; transition: 0.2s; }
+        .t-btn { width: 40px; height: 40px; border-radius: 8px; background: transparent; border: 1px solid transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; font-size: 1.2rem; transition: 0.2s; position: relative; }
         .t-btn:hover { color: var(--text); background: #222; }
-        .t-btn.active { background: rgba(0, 242, 255, 0.1); color: var(--accent); border-color: var(--accent); }
+        .t-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-dim); }
+        .t-btn[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 50px; background: #222; padding: 5px 10px; border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.8rem; white-space: nowrap; z-index: 1000; pointer-events: none; }
 
         /* VIEWPORT */
-        #viewport { grid-column: 2; grid-row: 2; position: relative; overflow: hidden; background: #000; }
+        #viewport { grid-column: 2; grid-row: 2; position: relative; overflow: hidden; background: #050505; }
         #graph-canvas { width: 100%; height: 100%; }
+        
+        /* Grid Background Effect */
+        #viewport::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(#222 1px, transparent 1px);
+            background-size: 40px 40px; opacity: 0.5; pointer-events: none;
+        }
 
         /* OVERLAYS */
-        .overlay { position: absolute; background: rgba(15, 17, 21, 0.95); border: 1px solid var(--border); border-radius: 6px; padding: 10px; z-index: 10; }
+        .overlay { position: absolute; background: rgba(20, 20, 20, 0.95); border: 1px solid var(--border); border-radius: 6px; padding: 10px; z-index: 10; backdrop-filter: blur(4px); }
         #search { top: 20px; left: 20px; display: flex; gap: 10px; width: 300px; }
         #search input { background: transparent; border: none; color: white; width: 100%; font-family: var(--font-mono); }
         #stats { top: 20px; right: 20px; font-size: 0.8rem; color: var(--muted); text-align: right; }
         #zoom { bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 5px; }
         .z-btn { width: 30px; height: 30px; background: var(--panel); border: 1px solid var(--border); color: var(--text); cursor: pointer; border-radius: 4px; }
+        .z-btn:hover { background: #333; }
 
         /* INSPECTOR */
         #inspector { grid-column: 3; grid-row: 2 / -1; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; z-index: 90; }
@@ -65,8 +73,8 @@
         .p-sec { padding: 15px; border-bottom: 1px solid var(--border); }
         .form-row { margin-bottom: 10px; }
         .form-row label { display: block; font-size: 0.7rem; color: var(--muted); margin-bottom: 4px; }
-        .form-row input, .form-row select { width: 100%; background: #050505; border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 4px; font-family: var(--font-mono); }
-        .json-box { background: #050505; padding: 10px; border-radius: 4px; border: 1px solid var(--border); font-family: var(--font-mono); font-size: 0.75rem; color: #a8b2d1; overflow: auto; max-height: 300px; white-space: pre-wrap; }
+        .form-row input, .form-row select { width: 100%; background: #000; border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 4px; font-family: var(--font-mono); }
+        .json-box { background: #000; padding: 10px; border-radius: 4px; border: 1px solid var(--border); font-family: var(--font-mono); font-size: 0.75rem; color: #a8b2d1; overflow: auto; max-height: 300px; white-space: pre-wrap; }
 
         /* LOGS */
         #logs { grid-column: 2; grid-row: 3; background: #000; border-top: 1px solid var(--accent); display: flex; flex-direction: column; font-family: var(--font-mono); z-index: 80; }
@@ -93,7 +101,7 @@
 
 <div id="app">
     <header>
-        <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v13</div>
+        <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v14</div>
         <div class="tools">
             <button class="btn btn-sec" onclick="App.undo()"><i class="fas fa-undo"></i></button>
             <button class="btn btn-sec" onclick="App.redo()"><i class="fas fa-redo"></i></button>
@@ -105,15 +113,12 @@
     </header>
 
     <div id="toolbar">
-        <div class="t-btn active" id="m-2d" onclick="Graph.setMode('2D')" title="2D Mode"><i class="fas fa-circle-nodes"></i></div>
-        <div class="t-btn" id="m-3d" onclick="Graph.setMode('3D')" title="3D Mode"><i class="fas fa-cube"></i></div>
+        <div class="t-btn active" id="t-move" onclick="Tools.set('move')" data-tip="Move / Select"><i class="fas fa-mouse-pointer"></i></div>
+        <div class="t-btn" id="t-link" onclick="Tools.set('link')" data-tip="Link (Drag & Snap)"><i class="fas fa-link"></i></div>
+        <div class="t-btn" onclick="Graph.addManual()" data-tip="Add Node"><i class="fas fa-plus"></i></div>
         <div style="width:20px; height:1px; background:var(--border)"></div>
-        <div class="t-btn active" id="t-move" onclick="Tools.set('move')" title="Move Tool"><i class="fas fa-mouse-pointer"></i></div>
-        <div class="t-btn" id="t-link" onclick="Tools.set('link')" title="Link Tool (Drag to Connect)"><i class="fas fa-link"></i></div>
-        <div class="t-btn" onclick="Graph.addManual()" title="Add Node"><i class="fas fa-plus"></i></div>
-        <div style="width:20px; height:1px; background:var(--border)"></div>
-        <div class="t-btn active" id="t-phys" onclick="Graph.togglePhysics()" title="Toggle Physics"><i class="fas fa-anchor"></i></div>
-        <div class="t-btn" onclick="Graph.fit()" title="Fit View"><i class="fas fa-compress"></i></div>
+        <div class="t-btn" id="t-phys" onclick="Graph.togglePhysics()" data-tip="Toggle Physics Flow"><i class="fas fa-wind"></i></div>
+        <div class="t-btn" onclick="Graph.fit()" data-tip="Fit View"><i class="fas fa-compress"></i></div>
     </div>
 
     <div id="viewport">
@@ -165,13 +170,13 @@
 
 <script>
 /**
- * TITAN GRAPH v13
- * Robust Core Edition
+ * TITAN GRAPH v14
+ * 2D Precision Edition
  */
 
 const Config = {
-    colors: { domain: '#00f2ff', ip: '#00ff9d', person: '#ffcc00', location: '#ff00ff', default: '#8395a7' },
-    icons: { domain: '\uf0ac', ip: '\uf233', person: '\uf007', location: '\uf3c5', default: '\uf128' }
+    colors: { domain: '#00ff9d', ip: '#00ccff', person: '#ffcc00', location: '#ff00ff', asn: '#aa00ff', default: '#888' },
+    icons: { domain: '\uf0ac', ip: '\uf233', person: '\uf007', location: '\uf3c5', asn: '\uf19c', default: '\uf128' }
 };
 
 const Utils = {
@@ -185,25 +190,41 @@ const Store = {
     history: [], hIdx: -1,
 
     init() {
-        const s = localStorage.getItem('titan_v13');
+        const s = localStorage.getItem('titan_v14');
         if(s) { try { this.state = JSON.parse(s); Logger.log("Session restored.", "suc"); } catch(e){ this.reset(); } } 
         else this.reset();
         this.save();
     },
     reset() { this.state = { nodes: [{id:Utils.uuid(), label:'Start', type:'default', x:0, y:0, val:1}], links:[] }; },
     
+    // Sync positions from graph engine to state
+    sync() {
+        if (!Graph.instance) return;
+        const gNodes = Graph.instance.graphData().nodes;
+        gNodes.forEach(gn => {
+            const sn = this.state.nodes.find(n => n.id === gn.id);
+            if (sn) { sn.x = gn.x; sn.y = gn.y; sn.fx = gn.fx; sn.fy = gn.fy; }
+        });
+    },
+
     save() {
+        this.sync();
         if(this.hIdx < this.history.length-1) this.history = this.history.slice(0, this.hIdx+1);
         this.history.push(Utils.copy(this.state));
         if(this.history.length>50) this.history.shift(); else this.hIdx++;
-        localStorage.setItem('titan_v13', JSON.stringify(this.state));
+        localStorage.setItem('titan_v14', JSON.stringify(this.state));
         UI.stats();
     },
     undo() { if(this.hIdx>0) { this.hIdx--; this.state = Utils.copy(this.history[this.hIdx]); Graph.refresh(); Logger.log("Undo"); } },
     redo() { if(this.hIdx<this.history.length-1) { this.hIdx++; this.state = Utils.copy(this.history[this.hIdx]); Graph.refresh(); Logger.log("Redo"); } },
 
     addNode(d) {
-        const n = { id:Utils.uuid(), label:d.label, type:d.type||'default', val:1, meta:d.meta||{}, x:d.x||0, y:d.y||0 };
+        this.sync();
+        // Default to fixed position (Steadfast)
+        const n = { 
+            id:Utils.uuid(), label:d.label, type:d.type||'default', val:1, meta:d.meta||{}, 
+            x:d.x||0, y:d.y||0, fx:d.x||0, fy:d.y||0 
+        };
         this.state.nodes.push(n);
         this.save();
         return n;
@@ -212,145 +233,153 @@ const Store = {
         if(s===t) return;
         const ex = this.state.links.find(l => (l.source.id===s && l.target.id===t) || (l.source===s && l.target===t));
         if(!ex) {
+            this.sync();
             this.state.links.push({source:s, target:t});
             this.save();
             Graph.refresh();
         }
     },
-    updateNode(id, up) { const n = this.state.nodes.find(x=>x.id===id); if(n) { Object.assign(n, up); this.save(); Graph.refresh(); } },
+    updateNode(id, up) { 
+        const n = this.state.nodes.find(x=>x.id===id); 
+        if(n) { Object.assign(n, up); this.save(); Graph.refresh(); } 
+    },
     delNode(id) {
+        this.sync();
         this.state.nodes = this.state.nodes.filter(n=>n.id!==id);
         this.state.links = this.state.links.filter(l=>l.source.id!==id && l.target.id!==id && l.source!==id && l.target!==id);
         this.save(); Graph.refresh();
     }
 };
 
-// --- GRAPH ---
+// --- GRAPH ENGINE (2D) ---
 const Graph = {
-    instance: null, mode: '2D', selected: null, physics: true,
+    instance: null, selected: null, physics: false, // Default to Steadfast (False = Fixed)
     hoverNode: null, dragOrigin: null,
 
     init() {
-        this.render();
-        window.onresize = () => { if(this.instance) this.instance.width(document.getElementById('graph-canvas').clientWidth).height(document.getElementById('graph-canvas').clientHeight); };
+        const el = document.getElementById('graph-canvas');
+        this.instance = ForceGraph()(el)
+            .backgroundColor('#0a0a0a')
+            .nodeLabel('label')
+            .nodeColor(n => Config.colors[n.type] || Config.colors.default)
+            .linkColor(() => '#333')
+            .linkWidth(2)
+            .linkDirectionalArrowLength(4)
+            .linkDirectionalArrowRelPos(1)
+            .d3AlphaDecay(0.1) // Stop movement quickly
+            .d3VelocityDecay(0.6) // High friction
+            .onNodeHover(n => { 
+                this.hoverNode = n; 
+                el.style.cursor = n ? 'pointer' : (Tools.cur==='link'?'crosshair':'default'); 
+            })
+            .nodeCanvasObject((n, ctx, k) => {
+                const r = 6;
+                // Selection Halo
+                if(n===this.selected) { 
+                    ctx.beginPath(); ctx.arc(n.x, n.y, r*1.8, 0, 2*Math.PI); 
+                    ctx.fillStyle='rgba(0,255,157,0.3)'; ctx.fill(); 
+                }
+                // Link Target Glow
+                if(Tools.cur==='link' && this.hoverNode===n && this.dragOrigin && this.dragOrigin.id !== n.id) {
+                    ctx.beginPath(); ctx.arc(n.x, n.y, r*2.5, 0, 2*Math.PI); 
+                    ctx.strokeStyle='#00ff9d'; ctx.lineWidth=2/k; ctx.stroke();
+                }
+                // Body
+                ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 2*Math.PI); 
+                ctx.fillStyle=Config.colors[n.type]||'#888'; ctx.fill();
+                // Icon
+                ctx.font=`${4}px "Font Awesome 6 Free"`; ctx.fillStyle='#000'; 
+                ctx.textAlign='center'; ctx.textBaseline='middle'; 
+                ctx.fillText(Config.icons[n.type]||'?', n.x, n.y);
+                // Label
+                ctx.font=`${12/k}px monospace`; ctx.fillStyle='#eee'; 
+                ctx.fillText(n.label, n.x, n.y+r+(12/k));
+            })
+            .onNodeDragStart(node => {
+                // Save state for snap-back
+                this.dragOrigin = { id: node.id, x: node.x, y: node.y, fx: node.fx, fy: node.fy };
+            })
+            .onNodeDragEnd(node => {
+                if (Tools.cur === 'link') {
+                    // LINK LOGIC
+                    if (this.hoverNode && this.hoverNode.id !== node.id) {
+                        Store.addLink(node.id, this.hoverNode.id);
+                        Logger.log(`Linked ${node.label} -> ${this.hoverNode.label}`, "suc");
+                    }
+                    // SNAP BACK
+                    node.x = this.dragOrigin.x; node.y = this.dragOrigin.y;
+                    node.fx = this.dragOrigin.fx; node.fy = this.dragOrigin.fy;
+                } else {
+                    // MOVE LOGIC
+                    // If physics is OFF (Steadfast), fix position
+                    if (!this.physics) { node.fx = node.x; node.fy = node.y; }
+                    else { node.fx = null; node.fy = null; } // Release if physics ON
+                }
+                this.dragOrigin = null;
+            })
+            .onRenderFramePost((ctx, k) => {
+                // Draw Elastic Line
+                if (Tools.cur === 'link' && this.dragOrigin) {
+                    const n = Store.state.nodes.find(x => x.id === this.dragOrigin.id);
+                    if(n) {
+                        ctx.beginPath(); 
+                        ctx.moveTo(this.dragOrigin.x, this.dragOrigin.y); 
+                        ctx.lineTo(n.x, n.y);
+                        ctx.strokeStyle = '#ffff00'; ctx.lineWidth = 2/k; 
+                        ctx.setLineDash([4, 2]); ctx.stroke(); ctx.setLineDash([]);
+                    }
+                }
+            })
+            .onNodeClick(n => { this.selected = n; UI.insp(n); })
+            .onNodeRightClick((n, e) => {
+                e.preventDefault();
+                this.selected = n; UI.insp(n);
+                const m = document.getElementById('ctx');
+                m.style.left = e.clientX+'px'; m.style.top = e.clientY+'px'; m.style.display='block';
+            })
+            .onBackgroundClick(() => { this.selected = null; UI.clear(); });
+
+        this.refresh();
+        
+        window.onresize = () => { 
+            this.instance.width(document.getElementById('graph-canvas').clientWidth)
+                         .height(document.getElementById('graph-canvas').clientHeight); 
+        };
         document.onclick = () => document.getElementById('ctx').style.display='none';
     },
 
-    setMode(m) {
-        if(this.mode===m) return;
-        this.mode = m;
-        document.getElementById('m-2d').classList.toggle('active', m==='2D');
-        document.getElementById('m-3d').classList.toggle('active', m==='3D');
-        document.getElementById('graph-canvas').innerHTML = '';
-        this.instance = null;
-        setTimeout(() => this.render(), 50);
+    refresh() { 
+        // Deep copy to ensure reactivity
+        const data = { nodes: Store.state.nodes.map(n=>({...n})), links: Store.state.links.map(l=>({...l})) };
+        this.instance.graphData(data); 
     },
 
     togglePhysics() {
         this.physics = !this.physics;
         document.getElementById('t-phys').classList.toggle('active', this.physics);
-        if(!this.physics) {
+        if(this.physics) {
+            // Unfix all
             Store.state.nodes.forEach(n => { n.fx = null; n.fy = null; });
-            if(this.instance) this.instance.d3ReheatSimulation();
-            Logger.log("Physics: Flow");
+            this.instance.d3ReheatSimulation();
+            Logger.log("Physics: Flow (Organic)");
         } else {
-            Logger.log("Physics: Steadfast");
+            // Fix all
+            Store.state.nodes.forEach(n => { n.fx = n.x; n.fy = n.y; });
+            Logger.log("Physics: Steadfast (Fixed)");
         }
-    },
-
-    render() {
-        const el = document.getElementById('graph-canvas');
-        const w = el.clientWidth, h = el.clientHeight;
-
-        if(this.mode === '2D') {
-            this.instance = ForceGraph()(el)
-                .width(w).height(h).backgroundColor('#000')
-                .graphData(Store.state)
-                .nodeLabel('label')
-                .nodeColor(n => Config.colors[n.type] || Config.colors.default)
-                .linkColor(() => '#333')
-                .linkWidth(2).linkDirectionalArrowLength(4).linkDirectionalArrowRelPos(1)
-                .d3AlphaDecay(0.05) // Reduce jitter
-                .d3VelocityDecay(0.4) // Increase friction
-                .onNodeHover(n => { this.hoverNode = n; el.style.cursor = n ? 'pointer' : (Tools.cur==='link'?'crosshair':'default'); })
-                .nodeCanvasObject((n, ctx, k) => {
-                    const r = 6;
-                    if(n===this.selected) { ctx.beginPath(); ctx.arc(n.x, n.y, r*1.8, 0, 2*Math.PI); ctx.fillStyle='rgba(0,242,255,0.3)'; ctx.fill(); }
-                    if(Tools.cur==='link' && this.hoverNode===n && this.dragOrigin && this.dragOrigin.id !== n.id) {
-                        ctx.beginPath(); ctx.arc(n.x, n.y, r*2.5, 0, 2*Math.PI); ctx.strokeStyle='#00f2ff'; ctx.lineWidth=2/k; ctx.stroke();
-                    }
-                    ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, 2*Math.PI); ctx.fillStyle=Config.colors[n.type]||'#888'; ctx.fill();
-                    ctx.font=`${4}px "Font Awesome 6 Free"`; ctx.fillStyle='#000'; ctx.textAlign='center'; ctx.textBaseline='middle'; 
-                    ctx.fillText(Config.icons[n.type]||'?', n.x, n.y);
-                    ctx.font=`${12/k}px monospace`; ctx.fillStyle='#eee'; ctx.fillText(n.label, n.x, n.y+r+(12/k));
-                })
-                .onNodeDragStart(node => {
-                    this.dragOrigin = { id: node.id, x: node.x, y: node.y, fx: node.fx, fy: node.fy };
-                })
-                .onNodeDragEnd(node => {
-                    if (Tools.cur === 'link') {
-                        if (this.hoverNode && this.hoverNode.id !== node.id) {
-                            Store.addLink(node.id, this.hoverNode.id);
-                            Logger.log(`Linked ${node.label} -> ${this.hoverNode.label}`, "suc");
-                        }
-                        // Snap back
-                        node.x = this.dragOrigin.x; node.y = this.dragOrigin.y;
-                        node.fx = this.dragOrigin.fx; node.fy = this.dragOrigin.fy;
-                    } else {
-                        if (this.physics) { node.fx = node.x; node.fy = node.y; }
-                    }
-                    this.dragOrigin = null;
-                })
-                .onRenderFramePost((ctx, k) => {
-                    if (Tools.cur === 'link' && this.dragOrigin) {
-                        const n = Store.state.nodes.find(x => x.id === this.dragOrigin.id);
-                        if(n) {
-                            ctx.beginPath(); ctx.moveTo(this.dragOrigin.x, this.dragOrigin.y); ctx.lineTo(n.x, n.y);
-                            ctx.strokeStyle = '#ffff00'; ctx.lineWidth = 2/k; ctx.setLineDash([4, 2]); ctx.stroke(); ctx.setLineDash([]);
-                        }
-                    }
-                })
-                .onNodeClick(n => { this.selected = n; UI.insp(n); })
-                .onNodeRightClick((n, e) => {
-                    this.selected = n; UI.insp(n);
-                    const m = document.getElementById('ctx');
-                    m.style.left = e.clientX+'px'; m.style.top = e.clientY+'px'; m.style.display='block';
-                })
-                .onBackgroundClick(() => { this.selected = null; UI.clear(); });
-
-        } else {
-            // 3D
-            this.instance = ForceGraph3D()(el)
-                .width(w).height(h).backgroundColor('#000')
-                .graphData(Store.state)
-                .nodeColor(n => Config.colors[n.type] || '#888')
-                .nodeThreeObject(n => {
-                    const s = new SpriteText(n.label); s.color = n===this.selected?'#00f2ff':'#eee'; s.textHeight=8; return s;
-                })
-                .onNodeClick(n => { this.selected = n; UI.insp(n); })
-                .onNodeRightClick((n, e) => {
-                    this.selected = n; UI.insp(n);
-                })
-                .onNodeDragEnd(n => { if(this.physics){ n.fx=n.x; n.fy=n.y; n.fz=n.z; } });
-        }
-    },
-
-    refresh() { 
-        const data = { nodes: Store.state.nodes.map(n=>({...n})), links: Store.state.links.map(l=>({...l})) };
-        this.instance.graphData(data); 
+        this.refresh();
     },
 
     addManual() {
         const l = prompt("Label:");
         if(l) {
-            // Failsafe: Add at 0,0 if calculation fails
+            // Calculate center
             let x=0, y=0;
-            if(this.instance && this.mode==='2D') {
-                try {
-                    const c = this.instance.screen2GraphCoords(this.instance.width()/2, this.instance.height()/2);
-                    if(c) { x = c.x; y = c.y; }
-                } catch(e) {}
-            }
+            try {
+                const c = this.instance.screen2GraphCoords(window.innerWidth/2, window.innerHeight/2);
+                x = c.x; y = c.y;
+            } catch(e) {}
+            
             Store.addNode({label:l, x:x, y:y});
             Graph.refresh();
             Logger.log(`Added: ${l}`, "suc");
@@ -362,13 +391,11 @@ const Graph = {
         const n = Store.state.nodes.find(x=>x.label.toLowerCase().includes(q.toLowerCase()));
         if(n) {
             this.selected = n; UI.insp(n);
-            if(this.mode==='2D') { this.instance.centerAt(n.x, n.y, 1000); this.instance.zoom(6, 2000); }
+            this.instance.centerAt(n.x, n.y, 1000); this.instance.zoom(6, 2000);
         }
     },
     fit() { this.instance.zoomToFit(400, 100); },
-    zoom(d) {
-        if(this.mode==='2D') this.instance.zoom(this.instance.zoom() + d*0.5, 400);
-    }
+    zoom(d) { this.instance.zoom(this.instance.zoom() + d*0.5, 400); }
 };
 
 // --- TOOLS ---
@@ -421,7 +448,7 @@ const UI = {
         c.innerHTML = `
             <div class="p-sec">
                 <div class="form-row"><label>LABEL</label><input value="${n.label}" onchange="Store.updateNode('${n.id}', {label:this.value})"></div>
-                <div class="form-row"><label>TYPE</label><select onchange="Store.updateNode('${n.id}', {type:this.value})">${Object.keys(Config.colors).map(k=>`<option value="${k}" ${n.type===k?'selected':''}>${k}</option>`).join('')}</select></div>
+                <div class="form-row"><label>TYPE</label><select onchange="Store.updateNode('${n.id}', {type:this.value}); UI.insp(Store.state.nodes.find(x=>x.id==='${n.id}'))">${Object.keys(Config.colors).map(k=>`<option value="${k}" ${n.type===k?'selected':''}>${k}</option>`).join('')}</select></div>
             </div>
             <div class="p-sec"><div class="form-row"><label>RAW DATA</label><div class="json-box">${json}</div></div></div>
             <div class="p-sec"><button class="btn" style="background:var(--danger); width:100%" onclick="Graph.delSel()">DELETE</button></div>
@@ -441,7 +468,6 @@ const Logger = {
         const d = document.createElement('div'); d.className='l-ent';
         d.innerHTML = `<span class="l-ts">[${new Date().toLocaleTimeString()}]</span><span class="l-${t}">${m}</span>`;
         c.appendChild(d); c.scrollTop=c.scrollHeight;
-        document.getElementById('l-stat').innerHTML = `<span class="l-${t}">${m}</span>`;
     },
     copy() { navigator.clipboard.writeText(document.getElementById('l-cont').innerText); },
     clear() { document.getElementById('l-cont').innerHTML=''; }
@@ -454,7 +480,7 @@ const IO = {
 
 const App = { undo:()=>Store.undo(), redo:()=>Store.redo() };
 
-window.onload = () => { Store.init(); Graph.init(); Logger.log("TitanGraph v13 Online", "suc"); 
+window.onload = () => { Store.init(); Graph.init(); Logger.log("TitanGraph v14 Online", "suc"); 
     document.onkeydown = e => { if(e.ctrlKey&&e.key==='z') App.undo(); if(e.ctrlKey&&e.key==='y') App.redo(); if(e.key==='Delete') Graph.delSel(); };
 };
 </script>
