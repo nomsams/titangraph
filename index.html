@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TitanGraph v14.2 | 2D Precision</title>
+  <title>TitanGraph v14.3 | 2D Precision</title>
 
   <!-- CORE ENGINE (2D ONLY) -->
   <script src="https://cdn.jsdelivr.net/npm/force-graph@1.51.0/dist/force-graph.min.js"></script>
@@ -36,7 +36,7 @@
     input, textarea, .json-box { user-select: text; }
 
     /* LAYOUT */
-    #app { display: grid; grid-template-columns: 60px 1fr 350px; grid-template-rows: 50px 1fr 200px; height: 100vh; width: 100vw; }
+    #app { display: grid; grid-template-columns: 60px 1fr 350px; grid-template-rows: 50px 1fr 200px; height: 100vh; width: 100vw; transition: grid-template-rows 0.2s; }
     body.log-min #app { grid-template-rows: 50px 1fr 35px; }
     body.insp-closed #app { grid-template-columns: 60px 1fr 0px; }
 
@@ -97,7 +97,6 @@
     .l-suc { color: var(--success); }
     .l-wrn { color: var(--warn); }
 
-    /* Fix: when logs are minimized, hide the scrollable log container (no scrollbar) */
     body.log-min #l-cont { display: none; }
     body.log-min #logs { overflow: hidden; }
 
@@ -136,7 +135,7 @@
 <body>
   <div id="app">
     <header>
-      <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v14.2</div>
+      <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v14.3</div>
       <div class="tools">
         <span class="pill" id="mode-pill">MODE: MOVE</span>
         <span class="pill" id="snap-pill" title="Snap-to-grid">SNAP: OFF</span>
@@ -163,9 +162,6 @@
 
       <div style="width:20px; height:1px; background:var(--border)"></div>
 
-      <div class="t-btn" id="t-phys" onclick="Graph.togglePhysics()" data-tip="Toggle Physics Flow">
-        <i class="fas fa-wind"></i>
-      </div>
       <div class="t-btn" id="t-snap" onclick="Graph.toggleSnap()" data-tip="Snap to Grid">
         <i class="fas fa-magnet"></i>
       </div>
@@ -233,9 +229,10 @@
           <i class="fas fa-terminal" style="color:var(--accent)"></i>
           <span id="l-stat">Ready.</span>
         </div>
-        <div style="display:flex; gap:5px">
+        <div style="display:flex; gap:5px; align-items:center;">
           <button class="btn btn-sec" style="padding:2px 6px; font-size:0.7rem" onclick="event.stopPropagation(); Logger.copy()">COPY</button>
           <button class="btn btn-sec" style="padding:2px 6px; font-size:0.7rem" onclick="event.stopPropagation(); Logger.clear()">CLEAR</button>
+          <i id="log-chevron" class="fas fa-chevron-down" style="margin-left:10px; color:var(--muted)"></i>
         </div>
       </div>
       <div id="l-cont"></div>
@@ -296,24 +293,18 @@
 
   <script>
     /**
-     * TITAN GRAPH v14.2
-     * Additions vs v14.1:
-     * - Fix: click-to-link in Link tool (previously cleared source inadvertently).
-     * - Easier linking: Link tool now defaults to click source → click target; drag rubberband remains.
-     * - Labels readability: draw a small background plate under labels so link lines stay visually behind text.
-     * - Email node type added + email transforms (extract domain, MX/SPF/DMARC lookups).
-     * - Logs: when minimized, scroll container is hidden.
-     * - Extras: export PNG, duplicate node, reverse link, snap-to-grid, one-shot layout, clear graph (confirm).
+     * TITAN GRAPH v14.3
      */
 
     const Config = {
-      version: "14.2",
+      version: "14.3",
       storageKey: "titan_v14",
       colors: {
         domain: '#00ff9d',
         ip: '#00ccff',
         email: '#ff6b6b',
         person: '#ffcc00',
+        company: '#ff8800',
         location: '#ff00ff',
         asn: '#aa00ff',
         default: '#888'
@@ -323,6 +314,7 @@
         ip: '\uf233',          // server
         email: '\uf0e0',       // envelope
         person: '\uf007',      // user
+        company: '\uf1ad',     // building
         location: '\uf3c5',    // map-marker
         asn: '\uf19c',         // university
         default: '\uf128'      // question
@@ -366,7 +358,6 @@
         const v = String(s||'').trim();
         if (!v || v.includes(' ') || v.includes('@')) return false;
         if (Utils.isIp(v)) return false;
-        // very permissive (sub.domain.tld)
         return /^[a-z0-9.-]+\.[a-z]{2,}$/i.test(v);
       },
       detectType: (label) => {
@@ -376,7 +367,6 @@
         if (Utils.isDomainLike(s)) return 'domain';
         return 'default';
       },
-      // Small rounded rect helper for label background plates
       roundRect(ctx, x, y, w, h, r) {
         const rr = Math.min(r, w/2, h/2);
         ctx.beginPath();
@@ -386,6 +376,12 @@
         ctx.arcTo(x, y + h, x, y, rr);
         ctx.arcTo(x, y, x + w, y, rr);
         ctx.closePath();
+      },
+      isInputActive: (e) => {
+        const el = e.target;
+        if (!el) return false;
+        const tag = el.tagName ? el.tagName.toLowerCase() : '';
+        return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
       }
     };
 
@@ -414,11 +410,15 @@
         // Load persisted UI settings
         const ui = this.loadUiSettings();
         if (ui.inspClosed) document.body.classList.add('insp-closed');
-        if (ui.logMin) document.body.classList.add('log-min');
+        if (ui.logMin) {
+          document.body.classList.add('log-min');
+          const chev = document.getElementById('log-chevron');
+          if (chev) chev.className = 'fas fa-chevron-up';
+        }
         if (ui.hints) document.body.classList.add('show-hints');
         Config.snap.enabled = !!ui.snap;
 
-        this.ensurePinning(Graph.physics);
+        this.ensurePinning();
 
         // Seed history with current state
         this.history = [Utils.copy(this.state)];
@@ -450,7 +450,7 @@
       reset() {
         const id = Utils.uuid();
         this.state = {
-          nodes: [{ id, label: 'Start', type: 'default', x: 0, y: 0, fx: 0, fy: 0, val: 1, notes: '', meta: {} }],
+          nodes: [{ id, label: 'Start', type: 'default', color: null, x: 0, y: 0, fx: 0, fy: 0, val: 1, notes: '', meta: {} }],
           links: []
         };
       },
@@ -473,6 +473,7 @@
           const fy = (n.fy === null || n.fy === undefined) ? null : n.fy;
           out.nodes.push({
             id, label, type, x, y, fx, fy,
+            color: n.color || null,
             val: Number.isFinite(n.val) ? n.val : 1,
             notes: (n.notes ?? '').toString(),
             meta: Utils.isObj(n.meta) ? n.meta : {}
@@ -498,7 +499,7 @@
           });
         }
 
-        // Deduplicate links (directional + type + label)
+        // Deduplicate links
         const seen = new Set();
         out.links = out.links.filter(l => {
           const k = `${l.source}=>${l.target}::${l.type}::${l.label}`;
@@ -510,7 +511,6 @@
         return out;
       },
 
-      // Sync positions from graph engine to state
       sync() {
         if (!Graph.instance) return;
         const gNodes = Graph.instance.graphData().nodes || [];
@@ -519,7 +519,6 @@
           if (!sn) continue;
           if (Number.isFinite(gn.x)) sn.x = gn.x;
           if (Number.isFinite(gn.y)) sn.y = gn.y;
-          // preserve pinned/unpinned
           sn.fx = (gn.fx === null || gn.fx === undefined) ? null : gn.fx;
           sn.fy = (gn.fy === null || gn.fy === undefined) ? null : gn.fy;
         }
@@ -567,14 +566,12 @@
         }
       },
 
-      ensurePinning(physicsOn) {
-        if (physicsOn) return;
+      ensurePinning() {
         for (const n of this.state.nodes) {
           if (!Number.isFinite(n.x)) n.x = 0;
           if (!Number.isFinite(n.y)) n.y = 0;
-          // If fx/fy are null, node is explicitly unpinned (allow manual unpin even in steadfast).
-          if (n.fx === null || n.fx === undefined) n.fx = n.x;
-          if (n.fy === null || n.fy === undefined) n.fy = n.y;
+          if (n.fx === undefined) n.fx = n.x;
+          if (n.fy === undefined) n.fy = n.y;
         }
       },
 
@@ -589,12 +586,13 @@
           id: Utils.uuid(),
           label: label || 'Node',
           type: Config.colors[dt] ? dt : 'default',
+          color: d.color || null,
           val: 1,
           notes: (d.notes ?? '').toString(),
           meta: d.meta || {},
           x, y,
-          fx: Graph.physics ? null : x,
-          fy: Graph.physics ? null : y
+          fx: x,
+          fy: y
         };
 
         this.state.nodes.push(n);
@@ -643,7 +641,6 @@
         Object.assign(n, up);
 
         if (up.label && !up.type) {
-          // If user changes label and type is still default, try to auto-upgrade type.
           if (n.type === 'default') {
             const dt = Utils.detectType(n.label);
             if (dt !== 'default') n.type = dt;
@@ -652,8 +649,7 @@
 
         if (up.type && !Config.colors[up.type]) n.type = 'default';
 
-        // If physics is off and node is pinned, keep pinned.
-        if (!Graph.physics && n.fx !== null && n.fy !== null) {
+        if (n.fx !== null && n.fy !== null) {
           n.fx = Number.isFinite(n.fx) ? n.fx : n.x;
           n.fy = Number.isFinite(n.fy) ? n.fy : n.y;
         }
@@ -694,7 +690,6 @@
       selectedLink: null,
 
       // modes
-      physics: false,
       hoverNode: null,
       hoverLink: null,
 
@@ -709,7 +704,7 @@
       ctx: { kind: 'bg', x: 0, y: 0, gx: 0, gy: 0 },
 
       // grid snap
-      snapEnabled() { return !!Config.snap.enabled && !this.physics; },
+      snapEnabled() { return !!Config.snap.enabled; },
 
       init() {
         if (typeof ForceGraph !== 'function') {
@@ -722,7 +717,7 @@
         this.instance = ForceGraph()(el)
           .backgroundColor('#0a0a0a')
           .nodeLabel(n => n.label)
-          .nodeColor(n => Config.colors[n.type] || Config.colors.default)
+          .nodeColor(n => n.color || Config.colors[n.type] || Config.colors.default)
           .linkColor(l => Config.linkColors[(l.type ?? 'rel')] || Config.linkColors.default)
           .linkWidth(l => (l.width ?? 2))
           .linkDirectionalArrowLength(l => (l.directed === false ? 0 : 4))
@@ -743,7 +738,12 @@
 
           // Custom node render
           .nodeCanvasObject((n, ctx, k) => {
-            const r = 6;
+            const deg = n._degree || 0;
+            let extra = 0;
+            if (deg > 1) {
+              extra = Math.min(1.2, (deg - 1) * 0.2); // Max 20% extra size
+            }
+            const r = 6 + extra;
 
             // Selected halo
             if (this.selectedNode && n.id === this.selectedNode.id) {
@@ -767,7 +767,7 @@
             // Node body
             ctx.beginPath();
             ctx.arc(n.x, n.y, r, 0, 2 * Math.PI);
-            ctx.fillStyle = Config.colors[n.type] || '#888';
+            ctx.fillStyle = n.color || Config.colors[n.type] || '#888';
             ctx.fill();
 
             // Icon
@@ -775,11 +775,12 @@
             ctx.fillStyle = '#000';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.font = `900 ${10 / k}px "Font Awesome 6 Free"`;
+            const iconSize = (10 + (extra * 1.5)) / k;
+            ctx.font = `900 ${iconSize}px "Font Awesome 6 Free"`;
             ctx.fillText(Config.icons[n.type] || Config.icons.default, n.x, n.y + (0.5 / k));
             ctx.restore();
 
-            // Label background plate (keeps links visually below text)
+            // Label background plate
             const label = String(n.label ?? '');
             ctx.save();
             ctx.font = `${12 / k}px JetBrains Mono`;
@@ -834,7 +835,6 @@
 
           .onBackgroundClick(() => {
             if (Tools.effective() === 'link' && this.linkFrom) {
-              // Convenient cancel
               this.linkFrom = null;
               UI.toast('Link canceled', 'Click a node to start linking again.', 1200);
               UI.setStatus('Link canceled.');
@@ -897,7 +897,6 @@
           const eff = Tools.effective();
 
           if (eff === 'link' && this.hoverNode) {
-            // Rubberband linking: start drag from hovered node
             this.linkDrag.active = true;
             this.linkDrag.fromId = this.hoverNode.id;
             this.linkDrag.fromX = this.hoverNode.x;
@@ -943,7 +942,6 @@
           this.showCtx('bg', evt.clientX, evt.clientY);
         };
 
-        // Rubberband visual
         this.instance.onRenderFramePost((ctx, k) => {
           if (!this.linkDrag.active || !this.linkDrag.fromId) return;
           const from = this.instance.graphData().nodes.find(n => n.id === this.linkDrag.fromId);
@@ -991,7 +989,19 @@
 
       refresh() {
         if (!this.instance) return;
-        Store.ensurePinning(this.physics);
+        Store.ensurePinning();
+
+        // Calculate degrees for supernode sizing
+        const degrees = {};
+        Store.state.links.forEach(l => {
+          const s = Utils.endpointId(l.source);
+          const t = Utils.endpointId(l.target);
+          degrees[s] = (degrees[s] || 0) + 1;
+          degrees[t] = (degrees[t] || 0) + 1;
+        });
+        Store.state.nodes.forEach(n => {
+          n._degree = degrees[n.id] || 0;
+        });
 
         const data = {
           nodes: Store.state.nodes.map(n => ({ ...n })),
@@ -1068,6 +1078,7 @@
         const nn = Store.addNode({
           label: n.label + ' (copy)',
           type: n.type,
+          color: n.color,
           notes: n.notes,
           meta: Utils.copy(n.meta || {}),
           x: (n.x || 0) + 40,
@@ -1078,44 +1089,15 @@
         Logger.log('Node duplicated.', 'suc');
       },
 
-      // physics and layout
-      togglePhysics() {
-        this.physics = !this.physics;
-        document.getElementById('t-phys').classList.toggle('active', this.physics);
-
-        if (this.physics) {
-          Store.state.nodes.forEach(n => { n.fx = null; n.fy = null; });
-          this.instance.d3ReheatSimulation();
-          Logger.log('Physics: Flow (Organic)', 'inf');
-          UI.setStatus('Physics: ON');
-        } else {
-          Store.state.nodes.forEach(n => { n.fx = n.x; n.fy = n.y; });
-          Logger.log('Physics: Steadfast (Fixed)', 'inf');
-          UI.setStatus('Physics: OFF');
-        }
-
-        Store.save('Physics toggled');
-        this.refresh();
-      },
-
       oneShotLayout() {
-        // Temporarily run physics, then pin everything.
         if (!this.instance) return;
-        const was = this.physics;
-        if (!was) {
-          this.physics = true;
-          document.getElementById('t-phys').classList.add('active');
-          Store.state.nodes.forEach(n => { n.fx = null; n.fy = null; });
-          this.instance.d3ReheatSimulation();
-        }
+        Store.state.nodes.forEach(n => { n.fx = null; n.fy = null; });
+        this.instance.d3ReheatSimulation();
 
         UI.toast('Auto layout', 'Running a short physics burst to spread nodes, then pinning.', 1600);
         Logger.log('Auto layout: burst...', 'inf');
 
         setTimeout(() => {
-          // pin results
-          this.physics = false;
-          document.getElementById('t-phys').classList.remove('active');
           Store.sync();
           Store.state.nodes.forEach(n => { n.fx = n.x; n.fy = n.y; });
           Store.save('Auto layout applied');
@@ -1203,7 +1185,6 @@
           const notes = (document.getElementById('m-notes')?.value ?? '').trim();
           if (!label) { Logger.log('Label required.', 'err'); return; }
 
-          // If type left as default, auto-detect.
           const finalType = (type === 'default') ? Utils.detectType(label) : type;
 
           const n = Store.addNode({ label, type: finalType, notes, x: p.x, y: p.y });
@@ -1242,8 +1223,6 @@
 
       // linking
       handleClickToLink(n, evt) {
-        // In Link tool, click source -> click target to create.
-        // BUGFIX: do NOT clear linkFrom when selecting the node.
         if (!this.linkFrom) {
           this.linkFrom = n;
           this.selectNode(n, { keepLinkFrom: true });
@@ -1260,7 +1239,6 @@
           return;
         }
 
-        // Optional: hold Alt to open a link properties modal before creating
         const wantProps = !!evt?.altKey;
         const src = this.linkFrom;
         const dst = n;
@@ -1443,7 +1421,6 @@
         throw (lastErr || new Error('Conn Fail'));
       },
 
-      // dns.google helper
       async dnsResolve(name, type) {
         const url = `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}`;
         return await this.fetchJsonOrText(url);
@@ -1465,7 +1442,6 @@
             const d = await this.dnsResolve(label, 'A');
             const answers = d?.Answer || [];
             let added = 0;
-            // place children to the right to avoid link crossing label
             const baseX = (node.x || 0) + 160;
             let baseY = (node.y || 0);
 
@@ -1505,7 +1481,6 @@
             }
           }
 
-          // Email transforms
           else if (t === 'email_domain') {
             if (!Utils.isEmail(label)) {
               Logger.log('Not a valid email address (syntax).', 'wrn');
@@ -1528,12 +1503,10 @@
               const ans = d?.Answer || [];
               node.meta = { ...(node.meta || {}), mx: d };
 
-              // Build MX nodes (as domain nodes) and link
               let added = 0;
               const baseX = (node.x || 0) + 160;
               let baseY = (node.y || 0) + 70;
               for (const r of ans) {
-                // MX record type is 15, data like "10 mx1.example.com."
                 if (r.type === 15 && r.data) {
                   const parts = String(r.data).split(' ');
                   const host = parts.slice(1).join(' ').replace(/\.$/, '') || r.data;
@@ -1559,7 +1532,6 @@
               const spf = ans.filter(r => r.type === 16 && typeof r.data === 'string' && r.data.toLowerCase().includes('v=spf1'));
               node.meta = { ...(node.meta || {}), spf: spf.length ? spf : d };
 
-              // Create a note node summarizing SPF
               if (spf.length) {
                 const summary = spf.map(x => x.data).join('\n');
                 const spfNode = Store.addNode({ label: 'SPF', type: 'default', x: (node.x || 0) + 160, y: (node.y || 0) + 60, notes: summary });
@@ -1593,7 +1565,6 @@
             }
           }
 
-          // refresh inspector after meta updates
           const fresh = Store.state.nodes.find(x => x.id === node.id) || node;
           UI.inspNode(fresh);
           Graph.refresh();
@@ -1644,7 +1615,6 @@
           document.getElementById('st-sub').innerText = 'Right-click background to add nodes.';
         }
 
-        // Keep pills in sync
         this.updateModePill();
         this.updateSnapPill();
       },
@@ -1666,7 +1636,13 @@
       },
 
       toggleInsp() { document.body.classList.toggle('insp-closed'); Store.saveUiSettings(); },
-      toggleLogs() { document.body.classList.toggle('log-min'); Store.saveUiSettings(); },
+      toggleLogs() { 
+        document.body.classList.toggle('log-min'); 
+        const isMin = document.body.classList.contains('log-min');
+        const chev = document.getElementById('log-chevron');
+        if (chev) chev.className = isMin ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+        Store.saveUiSettings(); 
+      },
       toggleHints() { document.body.classList.toggle('show-hints'); Store.saveUiSettings(); },
 
       clear() {
@@ -1722,8 +1698,8 @@
         const json = n.meta ? JSON.stringify(n.meta, null, 2) : '';
         const types = Object.keys(Config.colors);
         const pinned = n.fx !== null && n.fy !== null;
+        const nodeColor = n.color || Config.colors[n.type] || Config.colors.default;
 
-        // Node-type specific quick actions
         let quick = '';
         if (n.type === 'email') {
           quick = `
@@ -1764,6 +1740,14 @@
               <select onchange="Store.updateNode('${n.id}', {type:this.value}); UI.inspNode(Store.state.nodes.find(x=>x.id==='${n.id}'))">
                 ${types.map(k => `<option value="${Utils.escapeHtml(k)}" ${n.type===k?'selected':''}>${Utils.escapeHtml(k)}</option>`).join('')}
               </select>
+            </div>
+
+            <div class="form-row">
+              <label>COLOR</label>
+              <div style="display:flex; gap:10px;">
+                <input type="color" value="${nodeColor}" onchange="Store.updateNode('${n.id}', {color:this.value}); UI.inspNode(Store.state.nodes.find(x=>x.id==='${n.id}'))" style="padding:0; height:30px; width:100%; cursor:pointer; border:none; background:transparent;">
+                <button class="btn btn-sec" onclick="Store.updateNode('${n.id}', {color:null}); UI.inspNode(Store.state.nodes.find(x=>x.id==='${n.id}'))" title="Reset to default type color"><i class="fas fa-undo"></i></button>
+              </div>
             </div>
 
             <div class="form-row">
@@ -1860,7 +1844,6 @@
       showCtx(kind, x, y) {
         const m = document.getElementById('ctx');
 
-        // Toggle menu section per context
         m.querySelectorAll('[data-ctx]').forEach(el => {
           el.style.display = (el.getAttribute('data-ctx') === kind) ? '' : 'none';
         });
@@ -1869,7 +1852,6 @@
           el.style.display = (ctx === kind) ? '' : 'none';
         });
 
-        // Additional filtering for node types
         if (kind === 'node') {
           const nt = Graph.selectedNode?.type || 'default';
           m.querySelectorAll('[data-ctx="node"][data-node-types]').forEach(el => {
@@ -1878,7 +1860,6 @@
           });
         }
 
-        // Position and clamp
         const vw = window.innerWidth, vh = window.innerHeight;
         m.style.display = 'block';
         const rect = m.getBoundingClientRect();
@@ -1948,7 +1929,6 @@
       },
 
       exportPng() {
-        // Export the ForceGraph canvas as a PNG
         try {
           const canvas = document.querySelector('#graph-canvas canvas');
           if (!canvas) { Logger.log('PNG export failed: canvas not found.', 'err'); return; }
@@ -1970,7 +1950,7 @@
           try {
             const obj = JSON.parse(e.target.result);
             Store.state = Store.normalizeState(obj);
-            Store.ensurePinning(Graph.physics);
+            Store.ensurePinning();
             Store.save('Imported');
             Graph.refresh();
             Logger.log('Imported', 'suc');
@@ -2008,13 +1988,13 @@
 
       // Global click closes context menu
       document.addEventListener('click', (e) => {
-        // Don't close if clicking inside modal
         if (document.getElementById('modal').style.display === 'block') return;
         UI.hideCtx();
       });
 
-      // Paste-to-add: if user pastes an email/ip/domain, create node at cursor
+      // Paste-to-add
       document.addEventListener('paste', (e) => {
+        if (Utils.isInputActive(e)) return;
         const txt = (e.clipboardData?.getData('text') || '').trim();
         if (!txt) return;
         if (!(Utils.isEmail(txt) || Utils.isIp(txt) || Utils.isDomainLike(txt))) return;
@@ -2028,6 +2008,14 @@
 
       // Keybindings
       document.addEventListener('keydown', (e) => {
+        if (Utils.isInputActive(e)) {
+          if (e.key === 'Escape') {
+            e.target.blur();
+            UI.closeModal();
+          }
+          return;
+        }
+
         if (e.ctrlKey && (e.key === 's' || e.key === 'S')) { e.preventDefault(); IO.export(); }
         if (e.ctrlKey && (e.key === 'o' || e.key === 'O')) { e.preventDefault(); document.getElementById('f-in').click(); }
         if (e.ctrlKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); document.getElementById('s-in').focus(); }
@@ -2050,7 +2038,6 @@
           UI.updateModePill();
         }
 
-        // tool switches
         if (!e.ctrlKey && !e.altKey && !e.metaKey) {
           if (e.key === 'v' || e.key === 'V') Tools.set('move');
           if (e.key === 'l' || e.key === 'L') Tools.set('link');
@@ -2064,14 +2051,8 @@
               Graph.addManual();
             }
           }
-
-          // quick email transforms
-          if (Graph.selectedNode && Graph.selectedNode.type === 'email') {
-            if (e.key === 'd' || e.key === 'D') { /* reserved for ctrl+d duplicate */ }
-          }
         }
 
-        // Shift = temporary link mode
         if (e.key === 'Shift') {
           Tools.shiftLink = true;
           Tools.applyNodeDrag();
@@ -2079,24 +2060,20 @@
       });
 
       document.addEventListener('keyup', (e) => {
+        if (Utils.isInputActive(e)) return;
         if (e.key === 'Shift') {
           Tools.shiftLink = false;
           Tools.applyNodeDrag();
         }
       });
 
-      // Snap behavior: when physics off and move drag ends, snap if enabled
-      // ForceGraph does not expose a direct drag-end callback when node drag is enabled; instead we rely on syncing
-      // positions periodically and snapping on mouseup in move mode.
       window.addEventListener('mouseup', () => {
         if (!Graph.snapEnabled()) return;
         if (Tools.effective() !== 'move') return;
-        // Snap selected node if pinned
         if (Graph.selectedNode) {
           const id = Graph.selectedNode.id;
           const n = Store.state.nodes.find(x => x.id === id);
           if (!n) return;
-          // if node is pinned, snap its pinned coords
           if (n.fx !== null && n.fy !== null) {
             const step = Config.snap.step;
             const sx = Math.round((n.fx ?? n.x) / step) * step;
@@ -2107,7 +2084,6 @@
         }
       });
 
-      // Initial pill sync
       UI.stats();
       UI.updateModePill();
       UI.updateSnapPill();
