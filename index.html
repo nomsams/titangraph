@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TitanGraph v14.4 | 2D Precision</title>
+  <title>TitanGraph v14.5 | 2D Precision</title>
 
   <!-- CORE ENGINE (2D ONLY) -->
   <script src="https://cdn.jsdelivr.net/npm/force-graph@1.51.0/dist/force-graph.min.js"></script>
@@ -29,8 +29,30 @@
       --font-mono: 'JetBrains Mono', monospace;
     }
 
+    /* LIGHT THEME OVERRIDES */
+    [data-theme="light"] {
+      --bg: #f4f4f5;
+      --panel: #ffffff;
+      --border: #d1d1d6;
+      --text: #111111;
+      --muted: #666666;
+      --accent-dim: rgba(0, 200, 120, 0.15);
+    }
+    [data-theme="light"] .json-box { background: #f9f9f9; color: #333; border-color: #ccc; }
+    [data-theme="light"] input, [data-theme="light"] select, [data-theme="light"] textarea { background: #fff; color: #111; border-color: #ccc; }
+    [data-theme="light"] #logs { background: #fff; border-top-color: #ccc; }
+    [data-theme="light"] .l-bar { background: #f4f4f5; border-bottom-color: #ddd; }
+    [data-theme="light"] .overlay { background: rgba(255, 255, 255, 0.95); border-color: #ccc; }
+    [data-theme="light"] #search input { color: #111; }
+    [data-theme="light"] .s-hit { border-bottom-color: #eee; }
+    [data-theme="light"] .s-hit:hover { background: #f0f0f0; }
+    [data-theme="light"] .t-btn:hover { background: #eee; }
+    [data-theme="light"] .z-btn { background: #fff; border-color: #ccc; }
+    [data-theme="light"] .z-btn:hover { background: #eee; }
+    [data-theme="light"] #viewport::before { background-image: radial-gradient(#ccc 1px, transparent 1px); }
+
     * { box-sizing: border-box; outline: none; user-select: none; }
-    body { margin: 0; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 13px; }
+    body { margin: 0; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--font-ui); font-size: 13px; transition: background 0.3s, color 0.3s; }
 
     /* Allow text selection inside inputs */
     input, textarea, .json-box { user-select: text; }
@@ -39,32 +61,43 @@
     #app { display: grid; grid-template-columns: 60px 1fr; grid-template-rows: 50px 1fr; height: 100vh; width: 100vw; overflow: hidden; }
 
     /* HEADER */
-    header { grid-column: 1 / -1; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 100; }
+    header { grid-column: 1 / -1; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 100; transition: background 0.3s, border-color 0.3s; }
     .brand { font-family: var(--font-mono); font-weight: 700; color: var(--accent); font-size: 1.2rem; letter-spacing: 1px; }
     .tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 
+    /* TOGGLE SWITCHES (iPhone style) */
+    .switch-wrap { display: flex; align-items: center; gap: 6px; margin-right: 8px; }
+    .switch-lbl { font-size: 0.65rem; color: var(--muted); font-weight: 600; letter-spacing: 0.5px; }
+    .switch { position: relative; display: inline-block; width: 36px; height: 20px; margin: 0; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #555; transition: .3s; border-radius: 20px; }
+    .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .3s; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    input:checked + .slider { background-color: #30d158; }
+    input:checked + .slider:before { transform: translateX(16px); }
+    [data-theme="light"] .slider { background-color: #d1d1d6; }
+
     /* TOOLBAR */
-    #toolbar { grid-column: 1; grid-row: 2 / -1; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding-top: 20px; gap: 15px; z-index: 90; }
+    #toolbar { grid-column: 1; grid-row: 2 / -1; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; align-items: center; padding-top: 20px; gap: 15px; z-index: 90; transition: background 0.3s, border-color 0.3s; }
     .t-btn { width: 40px; height: 40px; border-radius: 8px; background: transparent; border: 1px solid transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; font-size: 1.2rem; transition: 0.2s; position: relative; }
     .t-btn:hover { color: var(--text); background: #222; }
     .t-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px var(--accent-dim); }
-    .t-btn[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 50px; background: #222; padding: 5px 10px; border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.8rem; white-space: nowrap; z-index: 1000; pointer-events: none; }
+    .t-btn[data-tip]:hover::after { content: attr(data-tip); position: absolute; left: 50px; background: var(--panel); padding: 5px 10px; border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.8rem; white-space: nowrap; z-index: 1000; pointer-events: none; }
 
     /* VIEWPORT */
-    #viewport { grid-column: 2; grid-row: 2; position: relative; overflow: hidden; background: #050505; }
+    #viewport { grid-column: 2; grid-row: 2; position: relative; overflow: hidden; background: transparent; }
     #graph-canvas { width: 100%; height: 100%; }
 
     /* Grid Background Effect */
     #viewport::before {
       content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       background-image: radial-gradient(#222 1px, transparent 1px);
-      background-size: 40px 40px; opacity: 0.5; pointer-events: none;
+      background-size: 40px 40px; opacity: 0.5; pointer-events: none; transition: background-image 0.3s;
     }
 
     /* OVERLAYS */
-    .overlay { position: absolute; background: rgba(20, 20, 20, 0.95); border: 1px solid var(--border); border-radius: 6px; padding: 10px; z-index: 10; backdrop-filter: blur(4px); }
+    .overlay { position: absolute; background: rgba(20, 20, 20, 0.95); border: 1px solid var(--border); border-radius: 6px; padding: 10px; z-index: 10; backdrop-filter: blur(4px); transition: background 0.3s, border-color 0.3s; }
     #search { top: 20px; left: 20px; display: flex; flex-direction: column; width: 340px; }
-    #search input { background: transparent; border: none; color: white; width: 100%; font-family: var(--font-mono); }
+    #search input { background: transparent; border: none; color: var(--text); width: 100%; font-family: var(--font-mono); }
     #s-res { display: none; max-height: 300px; overflow-y: auto; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 5px; }
     .s-hit { padding: 8px; cursor: pointer; border-radius: 4px; color: var(--text); font-size: 0.8rem; border-bottom: 1px solid #222; }
     .s-hit:last-child { border-bottom: none; }
@@ -73,28 +106,27 @@
 
     #stats { top: 20px; right: 20px; font-size: 0.8rem; color: var(--muted); text-align: right; min-width: 240px; }
     #zoom { bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 5px; }
-    .z-btn { width: 30px; height: 30px; background: var(--panel); border: 1px solid var(--border); color: var(--text); cursor: pointer; border-radius: 4px; }
-    .z-btn:hover { background: #333; }
+    .z-btn { width: 30px; height: 30px; background: var(--panel); border: 1px solid var(--border); color: var(--text); cursor: pointer; border-radius: 4px; transition: 0.2s; }
 
-    #hint { bottom: 20px; left: 20px; color: #bbb; font-size: 0.78rem; display: none; }
+    #hint { bottom: 20px; left: 20px; color: var(--muted); font-size: 0.78rem; display: none; }
     body.show-hints #hint { display: block; }
 
     /* INSPECTOR (Overlay) */
-    #inspector { position: absolute; top: 50px; right: 0; bottom: 0; width: 350px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; z-index: 95; transform: translateX(100%); transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: -5px 0 20px rgba(0,0,0,0.5); }
+    #inspector { position: absolute; top: 50px; right: 0; bottom: 0; width: 350px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; z-index: 95; transform: translateX(100%); transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s, border-color 0.3s; box-shadow: -5px 0 20px rgba(0,0,0,0.3); }
     body.insp-open #inspector { transform: translateX(0); }
     .p-head { padding: 15px; border-bottom: 1px solid var(--border); font-weight: 600; color: var(--accent); display: flex; justify-content: space-between; align-items: center; }
     .p-body { padding: 0; overflow-y: auto; flex: 1; }
     .p-sec { padding: 15px; border-bottom: 1px solid var(--border); }
     .form-row { margin-bottom: 10px; }
     .form-row label { display: block; font-size: 0.7rem; color: var(--muted); margin-bottom: 4px; }
-    .form-row input, .form-row select, .form-row textarea { width: 100%; background: #000; border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 4px; font-family: var(--font-mono); }
+    .form-row input, .form-row select, .form-row textarea { width: 100%; background: #000; border: 1px solid var(--border); color: var(--text); padding: 8px; border-radius: 4px; font-family: var(--font-mono); transition: 0.3s; }
     .form-row textarea { min-height: 90px; resize: vertical; }
-    .json-box { background: #000; padding: 10px; border-radius: 4px; border: 1px solid var(--border); font-family: var(--font-mono); font-size: 0.75rem; color: #a8b2d1; overflow: auto; max-height: 300px; white-space: pre-wrap; }
+    .json-box { background: #000; padding: 10px; border-radius: 4px; border: 1px solid var(--border); font-family: var(--font-mono); font-size: 0.75rem; color: #a8b2d1; overflow: auto; max-height: 300px; white-space: pre-wrap; transition: 0.3s; }
 
     /* LOGS (Overlay at bottom) */
-    #logs { position: absolute; bottom: 0; left: 60px; right: 0; height: 200px; background: #000; border-top: 1px solid var(--accent); display: flex; flex-direction: column; font-family: var(--font-mono); z-index: 80; transition: height 0.2s ease; box-shadow: 0 -5px 20px rgba(0,0,0,0.5); }
+    #logs { position: absolute; bottom: 0; left: 60px; right: 0; height: 200px; background: #000; border-top: 1px solid var(--accent); display: flex; flex-direction: column; font-family: var(--font-mono); z-index: 80; transition: height 0.2s ease, background 0.3s; box-shadow: 0 -5px 20px rgba(0,0,0,0.3); }
     body.log-min #logs { height: 35px; }
-    .l-bar { height: 35px; min-height: 35px; background: var(--panel); border-bottom: 1px solid #222; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; cursor: pointer; }
+    .l-bar { height: 35px; min-height: 35px; background: var(--panel); border-bottom: 1px solid #222; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; cursor: pointer; transition: 0.3s; }
     #l-cont { flex: 1; overflow-y: auto; padding: 10px; font-size: 0.8rem; color: #ccc; }
     body.log-min #l-cont { display: none; }
     .l-ent { margin-bottom: 4px; display: flex; gap: 10px; border-bottom: 1px solid #111; padding-bottom: 2px; }
@@ -109,11 +141,12 @@
     .btn:hover { filter: brightness(1.1); }
     .btn-sec { background: transparent; border: 1px solid var(--border); color: var(--muted); }
     .btn-sec:hover { border-color: var(--text); color: var(--text); }
-    .btn-danger { background: var(--danger); color: #000; }
+    .btn-danger { background: var(--danger); color: #fff; }
     .pill { display:inline-flex; align-items:center; gap:6px; font-family: var(--font-mono); font-size: 0.72rem; color:#bbb; border:1px solid #2a2a2a; padding:3px 8px; border-radius: 999px; }
+    [data-theme="light"] .pill { border-color: #ccc; color: #555; }
 
     /* CONTEXT MENU */
-    #ctx { position: fixed; display: none; background: var(--panel); border: 1px solid var(--accent); box-shadow: 0 5px 20px rgba(0,0,0,0.9); z-index: 99999; min-width: 240px; border-radius: 6px; overflow: hidden; }
+    #ctx { position: fixed; display: none; background: var(--panel); border: 1px solid var(--accent); box-shadow: 0 5px 20px rgba(0,0,0,0.5); z-index: 99999; min-width: 240px; border-radius: 6px; overflow: hidden; }
     .ctx-i { padding: 10px 15px; cursor: pointer; font-size: 0.85rem; display: flex; gap: 10px; align-items: center; color: var(--text); }
     .ctx-i:hover { background: var(--accent); color: #000; }
     .ctx-i small { opacity: 0.7; margin-left: auto; font-family: var(--font-mono); }
@@ -122,7 +155,7 @@
 
     /* MODAL */
     #modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: none; z-index: 100000; }
-    #modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(560px, 94vw); background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 20px 80px rgba(0,0,0,0.8); display: none; z-index: 100001; }
+    #modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(560px, 94vw); background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 20px 80px rgba(0,0,0,0.5); display: none; z-index: 100001; }
     .m-head { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; color: var(--accent); font-weight: 700; font-family: var(--font-mono); }
     .m-body { padding: 16px; }
     .m-foot { padding: 14px 16px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
@@ -131,21 +164,41 @@
 
     /* Toast */
     #toast { position: fixed; bottom: 50px; left: 76px; background: rgba(20,20,20,0.94); border: 1px solid #222; padding: 10px 12px; border-radius: 10px; display:none; z-index: 120000; max-width: min(520px, 92vw); box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
-    #toast .t-title { color: #fff; font-weight: 700; margin-bottom: 3px; font-family: var(--font-mono); }
-    #toast .t-msg { color: #bbb; font-size: 0.85rem; line-height: 1.35; }
+    [data-theme="light"] #toast { background: rgba(255,255,255,0.95); border-color: #ccc; }
+    #toast .t-title { color: var(--text); font-weight: 700; margin-bottom: 3px; font-family: var(--font-mono); }
+    #toast .t-msg { color: var(--muted); font-size: 0.85rem; line-height: 1.35; }
   </style>
 </head>
 
 <body>
   <div id="app">
     <header>
-      <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v14.4</div>
+      <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v14.5</div>
       <div class="tools">
+        
+        <div class="switch-wrap">
+          <span class="switch-lbl">LIGHT</span>
+          <label class="switch" title="Toggle Light/Dark Theme">
+            <input type="checkbox" id="theme-toggle" onchange="UI.toggleTheme()">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div class="switch-wrap">
+          <span class="switch-lbl">NOTES</span>
+          <label class="switch" title="Preview Notes on Zoom">
+            <input type="checkbox" id="notes-toggle" onchange="UI.toggleNotesPreview()">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <div style="width:1px; background:var(--border); margin:0 5px; height:20px;"></div>
+
         <span class="pill" id="mode-pill">MODE: MOVE</span>
         <span class="pill" id="snap-pill" title="Snap-to-grid">SNAP: OFF</span>
         <button class="btn btn-sec" onclick="App.undo()" title="Undo (Ctrl+Z)"><i class="fas fa-undo"></i></button>
         <button class="btn btn-sec" onclick="App.redo()" title="Redo (Ctrl+Y)"><i class="fas fa-redo"></i></button>
-        <div style="width:1px; background:var(--border); margin:0 5px"></div>
+        <div style="width:1px; background:var(--border); margin:0 5px; height:20px;"></div>
         <button class="btn btn-sec" onclick="IO.export()" title="Export JSON (Ctrl+S)">JSON</button>
         <button class="btn btn-sec" onclick="IO.exportPng()" title="Export PNG (Ctrl+P)"><i class="fas fa-camera"></i></button>
         <button class="btn" onclick="document.getElementById('f-in').click()" title="Import JSON (Ctrl+O)">Import</button>
@@ -194,8 +247,8 @@
       <div id="stats" class="overlay">
         <div>Nodes: <span id="st-n" style="color:var(--accent)">0</span></div>
         <div>Links: <span id="st-l" style="color:var(--accent)">0</span></div>
-        <div style="margin-top:5px; border-top:1px solid #333; padding-top:5px; color:#fff" id="st-sel">None</div>
-        <div style="margin-top:6px; color:#999" id="st-sub">Right-click background to add nodes.</div>
+        <div style="margin-top:5px; border-top:1px solid var(--border); padding-top:5px; color:var(--text)" id="st-sel">None</div>
+        <div style="margin-top:6px; color:var(--muted)" id="st-sub">Right-click background to add nodes.</div>
       </div>
 
       <div id="zoom">
@@ -204,7 +257,7 @@
       </div>
 
       <div id="hint" class="overlay">
-        <div style="font-family:var(--font-mono); margin-bottom:6px; color:#fff">HOTKEYS</div>
+        <div style="font-family:var(--font-mono); margin-bottom:6px; color:var(--text)">HOTKEYS</div>
         <div>V: Move</div>
         <div>L: Link tool (click source → target)</div>
         <div>Shift (hold): Temporary Link mode</div>
@@ -216,7 +269,7 @@
         <div>Ctrl+P: Export PNG</div>
         <div>Ctrl+S: Export JSON</div>
         <div>Ctrl+O: Import JSON</div>
-        <div style="margin-top:6px; color:#aaa">Tip: in Link mode, click a node then click another node to link.</div>
+        <div style="margin-top:6px; color:var(--muted)">Tip: in Link mode, click a node then click another node to link.</div>
       </div>
     </div>
 
@@ -234,7 +287,7 @@
       <div class="l-bar" onclick="UI.toggleLogs()">
         <div style="display:flex; align-items:center; gap:10px">
           <i class="fas fa-terminal" style="color:var(--accent)"></i>
-          <span id="l-stat">Ready.</span>
+          <span id="l-stat" style="color:var(--text)">Ready.</span>
         </div>
         <div style="display:flex; gap:5px; align-items:center;">
           <button class="btn btn-sec" style="padding:2px 6px; font-size:0.7rem" onclick="event.stopPropagation(); Logger.copy()">COPY</button>
@@ -300,12 +353,14 @@
 
   <script>
     /**
-     * TITAN GRAPH v14.4
+     * TITAN GRAPH v14.5
      */
 
     const Config = {
-      version: "14.4",
+      version: "14.5",
       storageKey: "titan_v14",
+      theme: 'dark',
+      notesPreview: false,
       colors: {
         domain: '#00ff9d',
         ip: '#00ccff',
@@ -424,6 +479,14 @@
         }
         if (ui.hints) document.body.classList.add('show-hints');
         Config.snap.enabled = !!ui.snap;
+        
+        // Apply theme and notes preview settings
+        Config.theme = ui.theme === 'light' ? 'light' : 'dark';
+        Config.notesPreview = !!ui.notesPreview;
+        
+        document.getElementById('theme-toggle').checked = (Config.theme === 'light');
+        document.getElementById('notes-toggle').checked = Config.notesPreview;
+        UI.toggleTheme(Config.theme === 'light');
 
         this.ensurePinning();
 
@@ -438,9 +501,9 @@
       loadUiSettings() {
         try {
           const raw = localStorage.getItem(Config.storageKey + '_ui');
-          return raw ? JSON.parse(raw) : { logMin:false, hints:false, snap:false };
+          return raw ? JSON.parse(raw) : { logMin:false, hints:false, snap:false, theme:'dark', notesPreview:false };
         } catch {
-          return { logMin:false, hints:false, snap:false };
+          return { logMin:false, hints:false, snap:false, theme:'dark', notesPreview:false };
         }
       },
 
@@ -448,7 +511,9 @@
         const ui = {
           logMin: document.body.classList.contains('log-min'),
           hints: document.body.classList.contains('show-hints'),
-          snap: Config.snap.enabled
+          snap: Config.snap.enabled,
+          theme: Config.theme,
+          notesPreview: Config.notesPreview
         };
         localStorage.setItem(Config.storageKey + '_ui', JSON.stringify(ui));
       },
@@ -725,7 +790,7 @@
 
         const el = document.getElementById('graph-canvas');
         this.instance = ForceGraph()(el)
-          .backgroundColor('#0a0a0a')
+          .backgroundColor(Config.theme === 'light' ? '#f4f4f5' : '#0a0a0a')
           .nodeLabel(n => n.label)
           .nodeColor(n => n.color || Config.colors[n.type] || Config.colors.default)
           .linkColor(l => l.color || Config.linkColors[(l.type ?? 'rel')] || Config.linkColors.default)
@@ -747,7 +812,7 @@
             if (!this.hoverNode) el.style.cursor = l ? 'pointer' : (Tools.effective() === 'link' ? 'crosshair' : 'default');
           })
 
-          // Custom link text rendering
+          // Custom link text rendering (flush against line)
           .linkCanvasObjectMode(() => 'after')
           .linkCanvasObject((l, ctx, k) => {
             if (!l.label) return;
@@ -755,37 +820,38 @@
             const end = l.target;
             if (typeof start !== 'object' || typeof end !== 'object') return;
 
-            const textPos = {
-              x: start.x + (end.x - start.x) / 2,
-              y: start.y + (end.y - start.y) / 2
-            };
-
             const relLink = { x: end.x - start.x, y: end.y - start.y };
             let textAngle = Math.atan2(relLink.y, relLink.x);
+            
             // Keep text upright
-            if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle);
-            if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
+            let isFlipped = false;
+            if (textAngle > Math.PI / 2 || textAngle < -Math.PI / 2) {
+              textAngle += Math.PI;
+              isFlipped = true;
+            }
 
-            const fontSize = 8 / k; // Smaller than node text
+            const textPos = {
+              x: start.x + relLink.x / 2,
+              y: start.y + relLink.y / 2
+            };
+
+            const fontSize = 5 / k; // Smaller than node text
             ctx.font = `${fontSize}px Inter`;
-            const label = l.label;
-            const tw = ctx.measureText(label).width;
-            const pad = 2 / k;
-
+            
             ctx.save();
             ctx.translate(textPos.x, textPos.y);
             ctx.rotate(textAngle);
+            
+            // Offset to be flush against the line (visually above it)
+            const offset = -(fontSize / 2 + 0.5 / k);
+            ctx.translate(0, offset);
 
-            // Draw background plate
-            ctx.fillStyle = 'rgba(10,10,10,0.85)';
-            ctx.fillRect(-tw/2 - pad, -fontSize/2 - pad, tw + pad*2, fontSize + pad*2);
-
-            // Draw text
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillStyle = l.color || Config.linkColors[l.type] || '#ccc';
-            ctx.fillText(label, 0, 0);
-
+            
+            const isLight = Config.theme === 'light';
+            ctx.fillStyle = isLight ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.65)';
+            ctx.fillText(l.label, 0, 0);
             ctx.restore();
           })
 
@@ -846,18 +912,35 @@
             const w = textW + padX * 2;
             const h = textH + padY * 2;
 
+            const isLight = Config.theme === 'light';
+
             Utils.roundRect(ctx, cx, cy, w, h, 4 / k);
-            ctx.fillStyle = 'rgba(10,10,10,0.72)';
+            ctx.fillStyle = isLight ? 'rgba(255,255,255,0.85)' : 'rgba(10,10,10,0.72)';
             ctx.fill();
-            ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+            ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.35)';
             ctx.lineWidth = 1 / k;
             ctx.stroke();
 
             // Label
-            ctx.fillStyle = '#eee';
+            ctx.fillStyle = isLight ? '#111' : '#eee';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
             ctx.fillText(label, n.x, cy + padY);
+
+            // Notes Preview (if enabled and zoomed in)
+            if (Config.notesPreview && n.notes && k > 1.2) {
+              const lines = n.notes.split('\n').filter(x => x.trim()).slice(0, 2);
+              if (lines.length > 0) {
+                ctx.font = `${6 / k}px Inter`;
+                ctx.fillStyle = isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.5)';
+                let noteY = cy + padY + textH + (2 / k);
+                lines.forEach(line => {
+                  ctx.fillText(line, n.x, noteY);
+                  noteY += 8 / k;
+                });
+              }
+            }
+
             ctx.restore();
           })
 
@@ -1226,10 +1309,10 @@
                 <textarea id="m-notes" placeholder="Free text...">${Utils.escapeHtml(prefill.notes ?? '')}</textarea>
               </div>
             </div>
-            <div style="margin-top:10px; color:#888; font-family:var(--font-mono); font-size:0.72rem">
+            <div style="margin-top:10px; color:var(--muted); font-family:var(--font-mono); font-size:0.72rem">
               Position: x=${Number.isFinite(p.x) ? p.x.toFixed(2) : '0.00'}, y=${Number.isFinite(p.y) ? p.y.toFixed(2) : '0.00'}
             </div>
-            <div style="margin-top:8px; color:#aaa; font-size:0.75rem">
+            <div style="margin-top:8px; color:var(--muted); font-size:0.75rem">
               Auto-detect: if TYPE is left as <span style="font-family:var(--font-mono)">default</span>, Titan will infer email/ip/domain from the label.
             </div>
           `;
@@ -1271,7 +1354,7 @@
         });
 
         if (!hits.length) {
-          resEl.innerHTML = '<div style="padding:8px;color:#666;text-align:center">No matches</div>';
+          resEl.innerHTML = '<div style="padding:8px;color:var(--muted);text-align:center">No matches</div>';
           resEl.style.display = 'block';
           return;
         }
@@ -1358,7 +1441,7 @@
                 </select>
               </div>
             </div>
-            <div style="margin-top:10px; color:#888; font-family:var(--font-mono); font-size:0.72rem">
+            <div style="margin-top:10px; color:var(--muted); font-family:var(--font-mono); font-size:0.72rem">
               Tip: hold <b>Alt</b> while linking to open this dialog.
             </div>
           `;
@@ -1414,11 +1497,11 @@
         UI.hideCtx();
         UI.openModal('Clear Graph', () => {
           return `
-            <div style="color:#ddd; line-height:1.4">
+            <div style="color:var(--text); line-height:1.4">
               This will remove <b>all</b> nodes and links and cannot be undone after refresh.
               You can export JSON first if needed.
             </div>
-            <div style="margin-top:10px; color:#aaa; font-family:var(--font-mono); font-size:0.72rem">
+            <div style="margin-top:10px; color:var(--muted); font-family:var(--font-mono); font-size:0.72rem">
               Tip: use JSON export as a checkpoint.
             </div>
           `;
@@ -1711,10 +1794,29 @@
         document.getElementById('t-snap').classList.toggle('active', Config.snap.enabled);
       },
 
-      toggleInsp() { 
-        document.body.classList.toggle('insp-open'); 
+      toggleTheme(forceLight) {
+        const isLight = forceLight !== undefined ? forceLight : document.getElementById('theme-toggle').checked;
+        document.getElementById('theme-toggle').checked = isLight;
+        if (isLight) {
+          document.documentElement.setAttribute('data-theme', 'light');
+          if (Graph.instance) Graph.instance.backgroundColor('#f4f4f5');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          if (Graph.instance) Graph.instance.backgroundColor('#0a0a0a');
+        }
+        Config.theme = isLight ? 'light' : 'dark';
+        Store.saveUiSettings();
+        if (Graph.instance) Graph.refresh();
       },
-      
+
+      toggleNotesPreview(forceOn) {
+        const isOn = forceOn !== undefined ? forceOn : document.getElementById('notes-toggle').checked;
+        document.getElementById('notes-toggle').checked = isOn;
+        Config.notesPreview = isOn;
+        Store.saveUiSettings();
+        if (Graph.instance) Graph.refresh();
+      },
+
       toggleLogs() { 
         document.body.classList.toggle('log-min'); 
         const isMin = document.body.classList.contains('log-min');
@@ -1726,7 +1828,7 @@
       toggleHints() { document.body.classList.toggle('show-hints'); Store.saveUiSettings(); },
 
       clear() {
-        document.getElementById('p-cont').innerHTML = '<div style="padding:40px;text-align:center;color:#666">Select entity</div>';
+        document.getElementById('p-cont').innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">Select entity</div>';
         document.body.classList.remove('insp-open');
         this.stats();
       },
@@ -1756,7 +1858,7 @@
               <label>JSON (meta)</label>
               <textarea id="m-json" style="min-height:260px">${Utils.escapeHtml(initial)}</textarea>
             </div>
-            <div style="margin-top:8px; color:#888; font-family:var(--font-mono); font-size:0.72rem">
+            <div style="margin-top:8px; color:var(--muted); font-family:var(--font-mono); font-size:0.72rem">
               This edits only node.meta. Invalid JSON will be rejected.
             </div>
           `;
@@ -1810,7 +1912,7 @@
         }
 
         const paletteHtml = Config.palette.map(c => 
-          `<div style="width:22px;height:22px;border-radius:4px;background:${c};cursor:pointer;border:1px solid #333" onclick="Store.updateNode('${n.id}', {color:'${c}'}); UI.inspNode(Store.state.nodes.find(x=>x.id==='${n.id}'))"></div>`
+          `<div style="width:22px;height:22px;border-radius:4px;background:${c};cursor:pointer;border:1px solid var(--border)" onclick="Store.updateNode('${n.id}', {color:'${c}'}); UI.inspNode(Store.state.nodes.find(x=>x.id==='${n.id}'))"></div>`
         ).join('');
 
         c.innerHTML = `
@@ -1852,7 +1954,7 @@
 
             ${quick}
 
-            <div style="margin-top:10px; color:#888; font-family:var(--font-mono); font-size:0.72rem">
+            <div style="margin-top:10px; color:var(--muted); font-family:var(--font-mono); font-size:0.72rem">
               Tip: Link tool supports click-to-link. Hold <b>Alt</b> while linking to set link type/label.
             </div>
           </div>
@@ -1886,12 +1988,12 @@
         const linkColor = l.color || Config.linkColors[l.type] || Config.linkColors.default;
 
         const paletteHtml = Config.palette.map(col => 
-          `<div style="width:22px;height:22px;border-radius:4px;background:${col};cursor:pointer;border:1px solid #333" onclick="Store.updateLink('${l.id}', {color:'${col}'}); UI.inspLink(Store.state.links.find(x=>x.id==='${l.id}'))"></div>`
+          `<div style="width:22px;height:22px;border-radius:4px;background:${col};cursor:pointer;border:1px solid var(--border)" onclick="Store.updateLink('${l.id}', {color:'${col}'}); UI.inspLink(Store.state.links.find(x=>x.id==='${l.id}'))"></div>`
         ).join('');
 
         c.innerHTML = `
           <div class="p-sec">
-            <div style="font-family:var(--font-mono); color:#fff; margin-bottom:10px">
+            <div style="font-family:var(--font-mono); color:var(--text); margin-bottom:10px">
               ${Utils.escapeHtml(sn?.label || sid)} → ${Utils.escapeHtml(tn?.label || tid)}
             </div>
 
@@ -2032,7 +2134,13 @@
     const IO = {
       export() {
         const payload = Utils.copy(Store.state);
-        payload._meta = { app: 'TitanGraph', version: Config.version, exportedAt: new Date().toISOString() };
+        payload._meta = { 
+          app: 'TitanGraph', 
+          version: Config.version, 
+          exportedAt: new Date().toISOString(),
+          theme: Config.theme,
+          notesPreview: Config.notesPreview
+        };
         const a = document.createElement('a');
         a.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
         a.download = 'titan.json';
@@ -2062,6 +2170,20 @@
           try {
             const obj = JSON.parse(e.target.result);
             Store.state = Store.normalizeState(obj);
+            
+            if (obj._meta) {
+              if (obj._meta.theme) {
+                Config.theme = obj._meta.theme;
+                document.getElementById('theme-toggle').checked = (Config.theme === 'light');
+                UI.toggleTheme(Config.theme === 'light');
+              }
+              if (obj._meta.notesPreview !== undefined) {
+                Config.notesPreview = !!obj._meta.notesPreview;
+                document.getElementById('notes-toggle').checked = Config.notesPreview;
+                UI.toggleNotesPreview(Config.notesPreview);
+              }
+            }
+
             Store.ensurePinning();
             Store.save('Imported');
             Graph.refresh();
