@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TitanGraph v14.3 | 2D Precision</title>
+  <title>TitanGraph v14.4 | 2D Precision</title>
 
   <!-- CORE ENGINE (2D ONLY) -->
   <script src="https://cdn.jsdelivr.net/npm/force-graph@1.51.0/dist/force-graph.min.js"></script>
@@ -36,9 +36,7 @@
     input, textarea, .json-box { user-select: text; }
 
     /* LAYOUT */
-    #app { display: grid; grid-template-columns: 60px 1fr 350px; grid-template-rows: 50px 1fr 200px; height: 100vh; width: 100vw; transition: grid-template-rows 0.2s; }
-    body.log-min #app { grid-template-rows: 50px 1fr 35px; }
-    body.insp-closed #app { grid-template-columns: 60px 1fr 0px; }
+    #app { display: grid; grid-template-columns: 60px 1fr; grid-template-rows: 50px 1fr; height: 100vh; width: 100vw; overflow: hidden; }
 
     /* HEADER */
     header { grid-column: 1 / -1; background: var(--panel); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 100; }
@@ -65,8 +63,14 @@
 
     /* OVERLAYS */
     .overlay { position: absolute; background: rgba(20, 20, 20, 0.95); border: 1px solid var(--border); border-radius: 6px; padding: 10px; z-index: 10; backdrop-filter: blur(4px); }
-    #search { top: 20px; left: 20px; display: flex; gap: 10px; width: 340px; }
+    #search { top: 20px; left: 20px; display: flex; flex-direction: column; width: 340px; }
     #search input { background: transparent; border: none; color: white; width: 100%; font-family: var(--font-mono); }
+    #s-res { display: none; max-height: 300px; overflow-y: auto; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 5px; }
+    .s-hit { padding: 8px; cursor: pointer; border-radius: 4px; color: var(--text); font-size: 0.8rem; border-bottom: 1px solid #222; }
+    .s-hit:last-child { border-bottom: none; }
+    .s-hit:hover { background: var(--accent-dim); color: var(--accent); }
+    .s-hit-type { font-size: 0.65rem; color: var(--muted); margin-top: 3px; font-family: var(--font-mono); }
+
     #stats { top: 20px; right: 20px; font-size: 0.8rem; color: var(--muted); text-align: right; min-width: 240px; }
     #zoom { bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 5px; }
     .z-btn { width: 30px; height: 30px; background: var(--panel); border: 1px solid var(--border); color: var(--text); cursor: pointer; border-radius: 4px; }
@@ -75,8 +79,9 @@
     #hint { bottom: 20px; left: 20px; color: #bbb; font-size: 0.78rem; display: none; }
     body.show-hints #hint { display: block; }
 
-    /* INSPECTOR */
-    #inspector { grid-column: 3; grid-row: 2 / -1; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; z-index: 90; }
+    /* INSPECTOR (Overlay) */
+    #inspector { position: absolute; top: 50px; right: 0; bottom: 0; width: 350px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; z-index: 95; transform: translateX(100%); transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: -5px 0 20px rgba(0,0,0,0.5); }
+    body.insp-open #inspector { transform: translateX(0); }
     .p-head { padding: 15px; border-bottom: 1px solid var(--border); font-weight: 600; color: var(--accent); display: flex; justify-content: space-between; align-items: center; }
     .p-body { padding: 0; overflow-y: auto; flex: 1; }
     .p-sec { padding: 15px; border-bottom: 1px solid var(--border); }
@@ -86,19 +91,18 @@
     .form-row textarea { min-height: 90px; resize: vertical; }
     .json-box { background: #000; padding: 10px; border-radius: 4px; border: 1px solid var(--border); font-family: var(--font-mono); font-size: 0.75rem; color: #a8b2d1; overflow: auto; max-height: 300px; white-space: pre-wrap; }
 
-    /* LOGS */
-    #logs { grid-column: 2; grid-row: 3; background: #000; border-top: 1px solid var(--accent); display: flex; flex-direction: column; font-family: var(--font-mono); z-index: 80; }
-    .l-bar { height: 35px; background: var(--panel); border-bottom: 1px solid #222; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; cursor: pointer; }
+    /* LOGS (Overlay at bottom) */
+    #logs { position: absolute; bottom: 0; left: 60px; right: 0; height: 200px; background: #000; border-top: 1px solid var(--accent); display: flex; flex-direction: column; font-family: var(--font-mono); z-index: 80; transition: height 0.2s ease; box-shadow: 0 -5px 20px rgba(0,0,0,0.5); }
+    body.log-min #logs { height: 35px; }
+    .l-bar { height: 35px; min-height: 35px; background: var(--panel); border-bottom: 1px solid #222; display: flex; align-items: center; justify-content: space-between; padding: 0 10px; cursor: pointer; }
     #l-cont { flex: 1; overflow-y: auto; padding: 10px; font-size: 0.8rem; color: #ccc; }
+    body.log-min #l-cont { display: none; }
     .l-ent { margin-bottom: 4px; display: flex; gap: 10px; border-bottom: 1px solid #111; padding-bottom: 2px; }
     .l-ts { color: #555; min-width: 85px; }
     .l-inf { color: var(--accent); }
     .l-err { color: var(--danger); }
     .l-suc { color: var(--success); }
     .l-wrn { color: var(--warn); }
-
-    body.log-min #l-cont { display: none; }
-    body.log-min #logs { overflow: hidden; }
 
     /* UTILS */
     .btn { background: var(--accent); color: #000; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: 700; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 8px; }
@@ -126,7 +130,7 @@
     .m-grid .form-row { margin: 0; }
 
     /* Toast */
-    #toast { position: fixed; bottom: 16px; left: 76px; background: rgba(20,20,20,0.94); border: 1px solid #222; padding: 10px 12px; border-radius: 10px; display:none; z-index: 120000; max-width: min(520px, 92vw); box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+    #toast { position: fixed; bottom: 50px; left: 76px; background: rgba(20,20,20,0.94); border: 1px solid #222; padding: 10px 12px; border-radius: 10px; display:none; z-index: 120000; max-width: min(520px, 92vw); box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
     #toast .t-title { color: #fff; font-weight: 700; margin-bottom: 3px; font-family: var(--font-mono); }
     #toast .t-msg { color: #bbb; font-size: 0.85rem; line-height: 1.35; }
   </style>
@@ -135,7 +139,7 @@
 <body>
   <div id="app">
     <header>
-      <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v14.3</div>
+      <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v14.4</div>
       <div class="tools">
         <span class="pill" id="mode-pill">MODE: MOVE</span>
         <span class="pill" id="snap-pill" title="Snap-to-grid">SNAP: OFF</span>
@@ -180,8 +184,11 @@
       <div id="graph-canvas"></div>
 
       <div id="search" class="overlay">
-        <i class="fas fa-search" style="color:var(--muted)"></i>
-        <input id="s-in" placeholder="Search (Ctrl+K)..." />
+        <div style="display:flex; gap:10px; width:100%; align-items:center;">
+          <i class="fas fa-search" style="color:var(--muted)"></i>
+          <input id="s-in" placeholder="Search (Ctrl+K)..." autocomplete="off" />
+        </div>
+        <div id="s-res"></div>
       </div>
 
       <div id="stats" class="overlay">
@@ -216,7 +223,7 @@
     <div id="inspector">
       <div class="p-head">
         <span>Inspector</span>
-        <button class="btn btn-sec" style="padding:2px 6px" onclick="UI.toggleInsp()"><i class="fas fa-times"></i></button>
+        <button class="btn btn-sec" style="padding:2px 6px" onclick="Graph.clearSelection()"><i class="fas fa-times"></i></button>
       </div>
       <div class="p-body" id="p-cont">
         <div style="padding:40px; text-align:center; color:var(--muted)">Select an entity</div>
@@ -293,11 +300,11 @@
 
   <script>
     /**
-     * TITAN GRAPH v14.3
+     * TITAN GRAPH v14.4
      */
 
     const Config = {
-      version: "14.3",
+      version: "14.4",
       storageKey: "titan_v14",
       colors: {
         domain: '#00ff9d',
@@ -330,6 +337,7 @@
         dmarc: '#ffcc00',
         default: '#333'
       },
+      palette: ['#ff4444','#ff8800','#ffcc00','#30d158','#00ccff','#0066ff','#aa00ff','#ff00ff','#ffffff','#888888'],
       snap: {
         enabled: false,
         step: 10 // graph units
@@ -409,7 +417,6 @@
 
         // Load persisted UI settings
         const ui = this.loadUiSettings();
-        if (ui.inspClosed) document.body.classList.add('insp-closed');
         if (ui.logMin) {
           document.body.classList.add('log-min');
           const chev = document.getElementById('log-chevron');
@@ -431,15 +438,14 @@
       loadUiSettings() {
         try {
           const raw = localStorage.getItem(Config.storageKey + '_ui');
-          return raw ? JSON.parse(raw) : { inspClosed:false, logMin:false, hints:false, snap:false };
+          return raw ? JSON.parse(raw) : { logMin:false, hints:false, snap:false };
         } catch {
-          return { inspClosed:false, logMin:false, hints:false, snap:false };
+          return { logMin:false, hints:false, snap:false };
         }
       },
 
       saveUiSettings() {
         const ui = {
-          inspClosed: document.body.classList.contains('insp-closed'),
           logMin: document.body.classList.contains('log-min'),
           hints: document.body.classList.contains('show-hints'),
           snap: Config.snap.enabled
@@ -495,6 +501,8 @@
             label: (l.label ?? '').toString(),
             type: (l.type ?? 'rel').toString(),
             directed: (l.directed ?? true) === false ? false : true,
+            dashed: !!l.dashed,
+            color: l.color || null,
             meta: Utils.isObj(l.meta) ? l.meta : {}
           });
         }
@@ -626,6 +634,8 @@
           label: lab,
           type: typ,
           directed: dir,
+          dashed: !!extra.dashed,
+          color: extra.color || null,
           meta: extra.meta || {}
         };
 
@@ -718,8 +728,9 @@
           .backgroundColor('#0a0a0a')
           .nodeLabel(n => n.label)
           .nodeColor(n => n.color || Config.colors[n.type] || Config.colors.default)
-          .linkColor(l => Config.linkColors[(l.type ?? 'rel')] || Config.linkColors.default)
+          .linkColor(l => l.color || Config.linkColors[(l.type ?? 'rel')] || Config.linkColors.default)
           .linkWidth(l => (l.width ?? 2))
+          .linkLineDash(l => l.dashed ? [4, 4] : null)
           .linkDirectionalArrowLength(l => (l.directed === false ? 0 : 4))
           .linkDirectionalArrowRelPos(1)
           .linkLabel(l => l.label ? `${l.type || 'rel'}: ${l.label}` : (l.type || 'rel'))
@@ -736,12 +747,54 @@
             if (!this.hoverNode) el.style.cursor = l ? 'pointer' : (Tools.effective() === 'link' ? 'crosshair' : 'default');
           })
 
+          // Custom link text rendering
+          .linkCanvasObjectMode(() => 'after')
+          .linkCanvasObject((l, ctx, k) => {
+            if (!l.label) return;
+            const start = l.source;
+            const end = l.target;
+            if (typeof start !== 'object' || typeof end !== 'object') return;
+
+            const textPos = {
+              x: start.x + (end.x - start.x) / 2,
+              y: start.y + (end.y - start.y) / 2
+            };
+
+            const relLink = { x: end.x - start.x, y: end.y - start.y };
+            let textAngle = Math.atan2(relLink.y, relLink.x);
+            // Keep text upright
+            if (textAngle > Math.PI / 2) textAngle = -(Math.PI - textAngle);
+            if (textAngle < -Math.PI / 2) textAngle = -(-Math.PI - textAngle);
+
+            const fontSize = 8 / k; // Smaller than node text
+            ctx.font = `${fontSize}px Inter`;
+            const label = l.label;
+            const tw = ctx.measureText(label).width;
+            const pad = 2 / k;
+
+            ctx.save();
+            ctx.translate(textPos.x, textPos.y);
+            ctx.rotate(textAngle);
+
+            // Draw background plate
+            ctx.fillStyle = 'rgba(10,10,10,0.85)';
+            ctx.fillRect(-tw/2 - pad, -fontSize/2 - pad, tw + pad*2, fontSize + pad*2);
+
+            // Draw text
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = l.color || Config.linkColors[l.type] || '#ccc';
+            ctx.fillText(label, 0, 0);
+
+            ctx.restore();
+          })
+
           // Custom node render
           .nodeCanvasObject((n, ctx, k) => {
             const deg = n._degree || 0;
             let extra = 0;
             if (deg > 1) {
-              extra = Math.min(1.2, (deg - 1) * 0.2); // Max 20% extra size
+              extra = Math.min(3, (deg - 1) * 0.5); // Max 50% extra size (base 6 -> max 9)
             }
             const r = 6 + extra;
 
@@ -777,7 +830,7 @@
             ctx.textBaseline = 'middle';
             const iconSize = (10 + (extra * 1.5)) / k;
             ctx.font = `900 ${iconSize}px "Font Awesome 6 Free"`;
-            ctx.fillText(Config.icons[n.type] || Config.icons.default, n.x, n.y + (0.5 / k));
+            ctx.fillText(Config.icons[n.type] || Config.icons.default, n.x, n.y);
             ctx.restore();
 
             // Label background plate
@@ -1004,7 +1057,8 @@
         });
 
         const data = {
-          nodes: Store.state.nodes.map(n => ({ ...n })),
+          // Sort nodes by degree so supernodes render on top
+          nodes: Store.state.nodes.map(n => ({ ...n })).sort((a, b) => (a._degree || 0) - (b._degree || 0)),
           links: Store.state.links.map(l => ({ ...l }))
         };
 
@@ -1203,22 +1257,44 @@
       searchDebounce: null,
       search(qRaw) {
         const q = (qRaw ?? '').trim().toLowerCase();
-        if (!q) return;
-        const hits = Store.state.nodes.filter(x => (x.label ?? '').toLowerCase().includes(q));
-        if (!hits.length) {
-          Logger.log('Search: no matches.', 'wrn');
-          UI.setStatus('Search: no matches');
+        const resEl = document.getElementById('s-res');
+        if (!q) {
+          resEl.style.display = 'none';
           return;
         }
-        const n = hits[0];
-        this.selectedNode = n;
-        this.selectedLink = null;
-        UI.inspNode(n);
+
+        const hits = Store.state.nodes.filter(x => {
+          const lbl = (x.label ?? '').toLowerCase();
+          const nts = (x.notes ?? '').toLowerCase();
+          const meta = JSON.stringify(x.meta || {}).toLowerCase();
+          return lbl.includes(q) || nts.includes(q) || meta.includes(q);
+        });
+
+        if (!hits.length) {
+          resEl.innerHTML = '<div style="padding:8px;color:#666;text-align:center">No matches</div>';
+          resEl.style.display = 'block';
+          return;
+        }
+
+        resEl.innerHTML = hits.map(n => `
+          <div class="s-hit" onclick="Graph.focusNode('${n.id}')">
+            <div>${Utils.escapeHtml(n.label)}</div>
+            <div class="s-hit-type">${n.type}</div>
+          </div>
+        `).join('');
+        resEl.style.display = 'block';
+      },
+
+      focusNode(id) {
+        const n = Store.state.nodes.find(x => x.id === id);
+        if (!n) return;
+        this.selectNode(n);
         if (this.instance) {
           this.instance.centerAt(n.x, n.y, 600);
           this.instance.zoom(4, 700);
         }
-        UI.setStatus(`Search hit: ${n.label} (${hits.length} match${hits.length > 1 ? 'es' : ''})`);
+        document.getElementById('s-res').style.display = 'none';
+        document.getElementById('s-in').value = '';
       },
 
       // linking
@@ -1635,7 +1711,10 @@
         document.getElementById('t-snap').classList.toggle('active', Config.snap.enabled);
       },
 
-      toggleInsp() { document.body.classList.toggle('insp-closed'); Store.saveUiSettings(); },
+      toggleInsp() { 
+        document.body.classList.toggle('insp-open'); 
+      },
+      
       toggleLogs() { 
         document.body.classList.toggle('log-min'); 
         const isMin = document.body.classList.contains('log-min');
@@ -1643,10 +1722,12 @@
         if (chev) chev.className = isMin ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
         Store.saveUiSettings(); 
       },
+      
       toggleHints() { document.body.classList.toggle('show-hints'); Store.saveUiSettings(); },
 
       clear() {
         document.getElementById('p-cont').innerHTML = '<div style="padding:40px;text-align:center;color:#666">Select entity</div>';
+        document.body.classList.remove('insp-open');
         this.stats();
       },
 
@@ -1728,6 +1809,10 @@
           `;
         }
 
+        const paletteHtml = Config.palette.map(c => 
+          `<div style="width:22px;height:22px;border-radius:4px;background:${c};cursor:pointer;border:1px solid #333" onclick="Store.updateNode('${n.id}', {color:'${c}'}); UI.inspNode(Store.state.nodes.find(x=>x.id==='${n.id}'))"></div>`
+        ).join('');
+
         c.innerHTML = `
           <div class="p-sec">
             <div class="form-row">
@@ -1744,9 +1829,12 @@
 
             <div class="form-row">
               <label>COLOR</label>
-              <div style="display:flex; gap:10px;">
+              <div style="display:flex; gap:10px; margin-bottom:8px;">
                 <input type="color" value="${nodeColor}" onchange="Store.updateNode('${n.id}', {color:this.value}); UI.inspNode(Store.state.nodes.find(x=>x.id==='${n.id}'))" style="padding:0; height:30px; width:100%; cursor:pointer; border:none; background:transparent;">
                 <button class="btn btn-sec" onclick="Store.updateNode('${n.id}', {color:null}); UI.inspNode(Store.state.nodes.find(x=>x.id==='${n.id}'))" title="Reset to default type color"><i class="fas fa-undo"></i></button>
+              </div>
+              <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                ${paletteHtml}
               </div>
             </div>
 
@@ -1782,7 +1870,7 @@
           </div>
         `;
 
-        document.body.classList.remove('insp-closed');
+        document.body.classList.add('insp-open');
         this.stats();
       },
 
@@ -1795,6 +1883,11 @@
         const tn = Store.state.nodes.find(n => n.id === tid);
         const json = l.meta ? JSON.stringify(l.meta, null, 2) : '';
         const linkTypes = Object.keys(Config.linkColors).filter(x => x !== 'default');
+        const linkColor = l.color || Config.linkColors[l.type] || Config.linkColors.default;
+
+        const paletteHtml = Config.palette.map(col => 
+          `<div style="width:22px;height:22px;border-radius:4px;background:${col};cursor:pointer;border:1px solid #333" onclick="Store.updateLink('${l.id}', {color:'${col}'}); UI.inspLink(Store.state.links.find(x=>x.id==='${l.id}'))"></div>`
+        ).join('');
 
         c.innerHTML = `
           <div class="p-sec">
@@ -1812,6 +1905,25 @@
             <div class="form-row">
               <label>LABEL</label>
               <input value="${Utils.escapeHtml(l.label || '')}" placeholder="optional" onchange="Store.updateLink('${l.id}', {label:this.value})" />
+            </div>
+
+            <div class="form-row">
+              <label>STYLE</label>
+              <select onchange="Store.updateLink('${l.id}', {dashed:this.value==='true'}); UI.inspLink(Store.state.links.find(x=>x.id==='${l.id}'))">
+                <option value="false" ${!l.dashed?'selected':''}>Solid</option>
+                <option value="true" ${l.dashed?'selected':''}>Dashed</option>
+              </select>
+            </div>
+
+            <div class="form-row">
+              <label>COLOR</label>
+              <div style="display:flex; gap:10px; margin-bottom:8px;">
+                <input type="color" value="${linkColor}" onchange="Store.updateLink('${l.id}', {color:this.value}); UI.inspLink(Store.state.links.find(x=>x.id==='${l.id}'))" style="padding:0; height:30px; width:100%; cursor:pointer; border:none; background:transparent;">
+                <button class="btn btn-sec" onclick="Store.updateLink('${l.id}', {color:null}); UI.inspLink(Store.state.links.find(x=>x.id==='${l.id}'))" title="Reset"><i class="fas fa-undo"></i></button>
+              </div>
+              <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                ${paletteHtml}
+              </div>
             </div>
 
             <div class="form-row">
@@ -1837,7 +1949,7 @@
           </div>
         `;
 
-        document.body.classList.remove('insp-closed');
+        document.body.classList.add('insp-open');
         this.stats();
       },
 
@@ -1985,9 +2097,16 @@
         clearTimeout(Graph.searchDebounce);
         Graph.searchDebounce = setTimeout(() => Graph.search(sIn.value), 220);
       });
+      sIn.addEventListener('focus', () => {
+        if (sIn.value) Graph.search(sIn.value);
+      });
 
-      // Global click closes context menu
+      // Global click closes context menu and search dropdown
       document.addEventListener('click', (e) => {
+        if (!e.target.closest('#search')) {
+          const resEl = document.getElementById('s-res');
+          if (resEl) resEl.style.display = 'none';
+        }
         if (document.getElementById('modal').style.display === 'block') return;
         UI.hideCtx();
       });
