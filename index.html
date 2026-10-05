@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TitanGraph v14.6 | 2D Precision</title>
+  <title>TitanGraph v15 | 2D Precision</title>
 
   <!-- CORE ENGINE (2D ONLY) -->
   <script src="https://cdn.jsdelivr.net/npm/force-graph@1.51.0/dist/force-graph.min.js"></script>
@@ -167,13 +167,33 @@
     [data-theme="light"] #toast { background: rgba(255,255,255,0.95); border-color: #ccc; }
     #toast .t-title { color: var(--text); font-weight: 700; margin-bottom: 3px; font-family: var(--font-mono); }
     #toast .t-msg { color: var(--muted); font-size: 0.85rem; line-height: 1.35; }
+    #modal .m-body { max-height: 70vh; overflow-y: auto; }
+    .check-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+    .check-grid label, .check-label { display:flex; align-items:center; gap:8px; color:var(--text); margin:8px 0; }
+    .check-grid input, .check-label input { width:auto; }
+    .help { color:var(--muted); font-size:0.78rem; line-height:1.5; }
+    .section-title { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px; }
+    .detail-card { border:1px solid var(--border); border-radius:6px; padding:10px; margin:8px 0; }
+    .detail-card b, .detail-card small { display:block; margin-bottom:6px; }
+    .detail-card small { color:var(--muted); }
+    .detail-card p { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.45; }
+    .detail-card a { color:var(--accent); }
+    .card-actions { display:flex; gap:6px; flex-wrap:wrap; }
+    .timeline-entry { border-left:3px solid var(--accent); }
+    .selection-item { padding:8px 0; border-bottom:1px solid var(--border); }
+    .selection-item small { color:var(--muted); }
+    .mention-menu { position:absolute; left:0; right:0; top:100%; z-index:20; background:var(--panel); border:1px solid var(--accent); box-shadow:0 8px 24px #0006; }
+    .mention-menu button { display:block; text-align:left; width:100%; background:transparent; border:0; color:var(--text); padding:9px; cursor:pointer; }
+    .mention-menu button.active, .mention-menu button:hover { background:var(--accent-dim); }
+    #view-status { bottom:215px; left:20px; max-width:340px; font-size:0.78rem; line-height:1.5; }
+    body.log-min #view-status { bottom:55px; }
   </style>
 </head>
 
 <body>
   <div id="app">
     <header>
-      <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v14.6</div>
+      <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v15</div>
       <div class="tools">
         
         <div class="switch-wrap">
@@ -211,6 +231,7 @@
       <div class="t-btn active" id="t-move" onclick="Tools.set('move')" data-tip="Move / Select (V)">
         <i class="fas fa-mouse-pointer"></i>
       </div>
+      <button class="t-btn" id="t-pan" onclick="Tools.set('pan')" data-tip="Pan (H)" aria-label="Pan"><i class="fas fa-hand"></i></button>
       <div class="t-btn" id="t-link" onclick="Tools.set('link')" data-tip="Link (L) — Click source then target">
         <i class="fas fa-link"></i>
       </div>
@@ -218,6 +239,9 @@
         <i class="fas fa-plus"></i>
       </div>
       <button class="t-btn" id="t-area" onclick="Tools.set('area')" data-tip="Draw / Edit Areas (A)" aria-label="Draw areas"><i class="fas fa-vector-square"></i></button>
+      <button class="t-btn" onclick="Views.open()" data-tip="Filters & Saved Views" aria-label="Filters and saved views"><i class="fas fa-filter"></i></button>
+      <button class="t-btn" onclick="Views.openPath()" data-tip="Find Paths" aria-label="Find paths"><i class="fas fa-route"></i></button>
+      <button class="t-btn" onclick="Recovery.open()" data-tip="Snapshots & Recovery" aria-label="Snapshots and recovery"><i class="fas fa-clock-rotate-left"></i></button>
 
       <div style="width:20px; height:1px; background:var(--border)"></div>
 
@@ -237,6 +261,7 @@
 
     <div id="viewport">
       <div id="graph-canvas"></div>
+      <div id="view-status" class="overlay" style="display:none"></div>
 
       <div id="search" class="overlay">
         <div style="display:flex; gap:10px; width:100%; align-items:center;">
@@ -353,13 +378,14 @@
     <div class="t-msg" id="toast-msg"></div>
   </div>
 
+  <script src="features.js"></script>
   <script>
     /**
-     * TITAN GRAPH v14.6
+     * TITAN GRAPH v15
      */
 
     const Config = {
-      version: "14.6",
+      version: "15.0",
       storageKey: "titan_v14",
       theme: 'dark',
       notesPreview: false,
@@ -397,6 +423,7 @@
         mx: '#00ccff',
         spf: '#30d158',
         dmarc: '#ffcc00',
+        mentions: '#00ccff',
         default: '#333'
       },
       palette: ['#ff4444','#ff8800','#ffcc00','#30d158','#00ccff','#0066ff','#aa00ff','#ff00ff','#ffffff','#888888'],
@@ -461,11 +488,12 @@
 
     // --- STATE ---
     const Store = {
-      state: { nodes: [], links: [] },
+      state: { nodes: [], links: [], areas: [], savedViews: [] },
       history: [],
+      historyBytes: [],
       hIdx: -1,
 
-      init() {
+      init(recovered = null) {
         let s;
         try { s = localStorage.getItem(Config.storageKey); } catch { Logger.log('Browser storage unavailable. Export JSON to keep your work.', 'wrn'); }
         if (s) {
@@ -479,6 +507,7 @@
           this.reset();
         }
 
+        if (recovered) this.state = recovered;
         try { this.state = this.normalizeState(this.state); }
         catch (e) { Logger.log('Session could not be restored: ' + e.message, 'err'); this.reset(); }
 
@@ -505,6 +534,7 @@
 
         // Seed history with current state
         this.history = [Utils.copy(this.state)];
+        this.historyBytes = [JSON.stringify(this.state).length];
         this.hIdx = 0;
         this.persist();
         UI.stats();
@@ -537,12 +567,12 @@
         const id = Utils.uuid();
         this.state = {
           nodes: [{ id, label: 'Start', type: 'default', color: null, x: 0, y: 0, fx: 0, fy: 0, val: 1, notes: '', meta: {} }],
-          links: [], areas: []
+          links: [], areas: [], savedViews: []
         };
       },
 
       normalizeState(st) {
-        const out = { nodes: [], links: [], areas: [] };
+        const out = { nodes: [], links: [], areas: [], savedViews: Views.normalizeSaved(st?.savedViews) };
         const nodes = Array.isArray(st?.nodes) ? st.nodes : [];
         const links = Array.isArray(st?.links) ? st.links : [];
         const nodeIds = new Set();
@@ -570,7 +600,9 @@
             ...(n.data !== undefined ? { data: n.data } : {}),
             tags: Utils.tags(n.tags),
             deceased: n.deceased === true || n.alive === false,
-            deathType: String(n.deathType ?? '')
+            deathType: String(n.deathType ?? ''),
+            timeline: NodeDetails.timeline(n.timeline),
+            sources: NodeDetails.sources(n.sources)
           });
         }
 
@@ -592,14 +624,15 @@
             dashed: !!l.dashed,
             color: l.color || null,
             meta: Utils.isObj(l.meta) ? l.meta : (Utils.isObj(l.data) ? l.data : {}),
-            ...(l.data !== undefined ? { data: l.data } : {})
+            ...(l.data !== undefined ? { data: l.data } : {}),
+            ...(l.autoMention ? { autoMention:true } : {})
           });
         }
 
         // Deduplicate links
         const seen = new Set();
         out.links = out.links.filter(l => {
-          const k = JSON.stringify([l.source, l.target, l.type, l.label, l.directed, l.dashed, l.color]);
+          const k = JSON.stringify([l.source, l.target, l.type, l.label, l.directed, l.dashed, l.color, l.autoMention, l.meta, l.data]);
           if (seen.has(k)) return false;
           seen.add(k);
           return true;
@@ -631,20 +664,32 @@
       },
 
       persist() {
-        try { localStorage.setItem(Config.storageKey, JSON.stringify(this.state)); return true; }
-        catch { Logger.log('Autosave failed: browser storage is full or unavailable. Export JSON to keep your work.', 'wrn'); return false; }
+        const savedAt = Date.now();
+        Recovery.schedule(this.state, savedAt);
+        try {
+          localStorage.setItem(Config.storageKey, JSON.stringify(this.state));
+          localStorage.setItem(Config.storageKey+'_savedAt', String(savedAt));
+          return true;
+        } catch {
+          if (!Recovery.ready) Logger.log('Autosave failed: browser storage is full or unavailable. Export JSON to keep your work.', 'wrn');
+          return Recovery.ready;
+        }
       },
 
       save(reason = '', syncCoordinates = true) {
         if (syncCoordinates) this.sync();
+        if (this.historyBytes.length !== this.history.length) this.historyBytes = this.history.map(s=>JSON.stringify(s).length);
 
         if (this.hIdx < this.history.length - 1) {
           this.history = this.history.slice(0, this.hIdx + 1);
+          this.historyBytes = this.historyBytes.slice(0, this.hIdx + 1);
         }
-        this.history.push(Utils.copy(this.state));
-        if (this.history.length > 80) {
-          const overflow = this.history.length - 80;
-          this.history.splice(0, overflow);
+        const snapshotText = JSON.stringify(this.state);
+        this.history.push(JSON.parse(snapshotText));
+        this.historyBytes.push(snapshotText.length);
+        let total = this.historyBytes.reduce((sum,size)=>sum+size,0);
+        while (this.history.length > 80 || (total > 32000000 && this.history.length > 2)) {
+          this.history.shift(); total -= this.historyBytes.shift();
         }
         this.hIdx = this.history.length - 1;
 
@@ -661,6 +706,7 @@
           Graph.refresh();
           this.persist();
           Logger.log('Undo', 'inf');
+          Selection.show(); Views.updateBadge();
         }
       },
 
@@ -672,6 +718,7 @@
           Graph.refresh();
           this.persist();
           Logger.log('Redo', 'inf');
+          Selection.show(); Views.updateBadge();
         }
       },
 
@@ -703,12 +750,14 @@
           tags: Utils.tags(d.tags),
           deceased: !!d.deceased,
           deathType: String(d.deathType ?? ''),
+          timeline: NodeDetails.timeline(d.timeline), sources: NodeDetails.sources(d.sources),
           x, y,
           fx: x,
           fy: y
         };
 
         this.state.nodes.push(n);
+        Mentions.syncAll();
         this.save(`Added node: ${n.label}`);
         return n;
       },
@@ -727,7 +776,7 @@
           Utils.endpointId(l.source) === s &&
           Utils.endpointId(l.target) === t &&
           (l.type ?? 'rel') === typ &&
-          (l.label ?? '') === lab
+          (l.label ?? '') === lab && (l.directed !== false) === dir
         );
         if (ex) return ex;
 
@@ -756,6 +805,9 @@
         if (!n) return;
         Object.assign(n, up);
         if ('tags' in up) n.tags = Utils.tags(up.tags);
+        if ('timeline' in up) n.timeline = NodeDetails.timeline(up.timeline);
+        if ('sources' in up) n.sources = NodeDetails.sources(up.sources);
+        if (['notes','tags','timeline','sources'].some(key=>key in up)) Mentions.syncNode(n);
 
         if (up.label && !up.type) {
           if (n.type === 'default') {
@@ -949,8 +1001,8 @@
           .nodePointerAreaPaint((n, color, ctx) => {
             ctx.fillStyle = color; ctx.beginPath(); ctx.arc(n.x, n.y, Utils.nodeRadius(n), 0, Math.PI * 2); ctx.fill();
           })
-          .linkColor(l => l.color || Config.linkColors[(l.type ?? 'rel')] || Config.linkColors.default)
-          .linkWidth(l => (l.width ?? 2))
+          .linkColor(l => Views.pathLinks.has(l.id) ? '#ffcc00' : (l.color || Config.linkColors[(l.type ?? 'rel')] || Config.linkColors.default))
+          .linkWidth(l => Views.pathLinks.has(l.id) ? 3 : (l.width ?? 2))
           .linkLineDash(l => l.dashed ? [4, 4] : null)
           .linkDirectionalArrowLength(l => (l.directed === false ? 0 : 4))
           .linkDirectionalArrowRelPos(1)
@@ -1014,9 +1066,14 @@
           // Custom node render
           .nodeCanvasObject((n, ctx, k) => {
             const r = Utils.nodeRadius(n);
+            ctx.save();
+            if (Views.pathResult?.paths.length && !Views.pathNodes.has(n.id)) ctx.globalAlpha = 0.25;
+            if (Views.pathNodes.has(n.id)) {
+              ctx.beginPath(); ctx.arc(n.x,n.y,r+3/k,0,Math.PI*2);ctx.strokeStyle='#ffcc00';ctx.lineWidth=2/k;ctx.stroke();
+            }
 
             // Selected halo
-            if (this.selectedNode && n.id === this.selectedNode.id) {
+            if (Selection.ids.has(n.id) || (this.selectedNode && n.id === this.selectedNode.id)) {
               ctx.beginPath();
               ctx.arc(n.x, n.y, r * 1.95, 0, 2 * Math.PI);
               ctx.fillStyle = 'rgba(0,255,157,0.28)';
@@ -1095,25 +1152,22 @@
             }
 
             ctx.restore();
+            ctx.restore();
           })
 
           .onNodeClick((n, e) => {
             const eff = Tools.effective();
+            // Modifier clicks are handled by the canvas selection listener.
+            if (eff === 'move' && (e?.ctrlKey || e?.metaKey)) return;
             if (eff === 'link') {
               this.handleClickToLink(n, e);
               return;
             }
-            this.selectNode(n);
+            Selection.click(n,e);
           })
 
-          .onNodeDragEnd(n => {
-            const step = Config.snap.step;
-            if (Config.snap.enabled) { n.x = Math.round(n.x/step)*step; n.y = Math.round(n.y/step)*step; }
-            n.fx = n.x; n.fy = n.y;
-            Store.save('Node moved');
-            this.selectedNode = Store.state.nodes.find(x => x.id === n.id);
-            this.selectedLink = null; UI.inspNode(this.selectedNode);
-          })
+          .onNodeDrag((n,delta) => Selection.drag(n,delta))
+          .onNodeDragEnd(n => Selection.endDrag(n))
 
           .onLinkClick((l) => {
             this.selectLink(l);
@@ -1154,7 +1208,7 @@
         this.resize();
         window.addEventListener('resize', () => this.resize());
         this.attachCanvasHandlers(el);
-        this.instance.onRenderFramePre((ctx, k) => Areas.draw(ctx, k));
+        this.instance.onRenderFramePre((ctx, k) => { Areas.draw(ctx,k);Selection.draw(ctx,k); });
 
         this.refresh();
         Tools.applyNodeDrag();
@@ -1277,6 +1331,7 @@
           canvas.addEventListener('dblclick', onDblClick);
           canvas.addEventListener('contextmenu', onCtx);
           Areas.attach(canvas);
+          Selection.attach(canvas);
           return true;
         };
 
@@ -1304,28 +1359,29 @@
           degrees.set(t, (degrees.get(t) || 0) + 1);
         });
 
-        const data = {
-          // Sort nodes by degree so supernodes render on top
-          nodes: Store.state.nodes.map(n => ({ ...n, _degree:degrees.get(n.id) || 0 })).sort((a, b) => a._degree - b._degree),
-          links: Store.state.links.map(l => ({ ...l }))
-        };
+        const data = Views.graphData(Store.state,degrees);
+        const visibleIds = new Set(data.nodes.map(n=>n.id));
+        Selection.ids = new Set([...Selection.ids].filter(id=>visibleIds.has(id)));
 
         this.instance.graphData(data);
         Tools.applyNodeDrag();
         UI.stats();
+        Views.updateBadge();
       },
 
       // selection
       selectNode(n, opts = {}) {
+        if (!opts.keepMulti) Selection.ids = new Set([n.id]);
         this.selectedLink = null;
         this.selectedNode = n;
         if (!opts.keepLinkFrom) this.linkFrom = null;
-        UI.inspNode(n);
+        if (Selection.ids.size > 1) Selection.inspector(); else UI.inspNode(n);
         UI.hideCtx();
         UI.setStatus(`Selected node: ${n.label}`);
       },
 
       selectLink(l) {
+        Selection.ids.clear();
         this.selectedNode = null;
         this.selectedLink = l;
         this.linkFrom = null;
@@ -1338,6 +1394,7 @@
       },
 
       clearSelection() {
+        Selection.ids.clear();
         this.selectedNode = null;
         this.selectedLink = null;
         this.linkFrom = null;
@@ -1346,6 +1403,7 @@
       },
 
       delSel() {
+        if (Selection.ids.size > 1) { Selection.delete(); return; }
         if (this.selectedNode) {
           const id = this.selectedNode.id;
           Store.delNode(id);
@@ -1385,6 +1443,7 @@
           meta: Utils.copy(n.meta || {}),
           ...(n.data !== undefined ? { data: Utils.copy(n.data) } : {}),
           tags: [...(n.tags || [])], deceased: n.deceased, deathType: n.deathType,
+          timeline: Utils.copy(n.timeline || []), sources: Utils.copy(n.sources || []),
           x: (n.x || 0) + 40,
           y: (n.y || 0) + 30
         });
@@ -1533,6 +1592,7 @@
       focusNode(id) {
         const n = Store.state.nodes.find(x => x.id === id);
         if (!n) return;
+        if (this.instance && !this.instance.graphData().nodes.some(node=>node.id===id)) Views.reset();
         this.selectNode(n);
         if (this.instance) {
           this.instance.centerAt(n.x, n.y, 600);
@@ -1685,8 +1745,10 @@
 
       set(t) {
         Areas.draft = null;
+        Selection.box = null;
         this.cur = t;
         document.getElementById('t-move').classList.toggle('active', t === 'move');
+        document.getElementById('t-pan').classList.toggle('active', t === 'pan');
         document.getElementById('t-link').classList.toggle('active', t === 'link');
         document.getElementById('t-area').classList.toggle('active', t === 'area');
         UI.updateModePill();
@@ -1695,6 +1757,9 @@
           Logger.log('Link Mode: click source then target. Drag also works.', 'inf');
           UI.setStatus('Link Mode');
           UI.toast('Link tool', 'Click a source node, then click a target node to link.', 1400);
+        } else if (t === 'pan') {
+          Graph.linkFrom = null;
+          UI.setStatus('Pan Mode');
         } else if (t === 'area') {
           Graph.linkFrom = null;
           UI.setStatus('Areas: drag to draw; click an area to edit.');
@@ -1718,7 +1783,7 @@
         if (typeof Graph.instance.enableNodeDrag === 'function') {
           Graph.instance.enableNodeDrag(eff === 'move');
         }
-        Graph.instance.enablePanInteraction(eff !== 'area');
+        Graph.instance.enablePanInteraction(eff === 'pan');
         UI.updateModePill();
       }
     };
@@ -1926,7 +1991,10 @@
         document.getElementById('st-n').innerText = Store.state.nodes.length;
         document.getElementById('st-l').innerText = Store.state.links.length;
 
-        if (Graph.selectedNode) {
+        if (Selection.ids.size > 1) {
+          document.getElementById('st-sel').innerText = `${Selection.ids.size} nodes selected`;
+          document.getElementById('st-sub').innerText = 'Drag a selected node to move the group.';
+        } else if (Graph.selectedNode) {
           document.getElementById('st-sel').innerText = Graph.selectedNode.label;
           const type = Graph.selectedNode.type;
           const extra = (Tools.effective() === 'link' && Graph.linkFrom) ? ` • Linking from: ${Graph.linkFrom.label}` : '';
@@ -2136,7 +2204,9 @@
 
             <div class="form-row">
               <label>NOTES</label>
-              <textarea onchange="Store.updateNode(${Utils.jsAttr(n.id)}, {notes:this.value})">${Utils.escapeHtml(n.notes || '')}</textarea>
+              <textarea id="node-notes" onchange="UI.updatePerson(${Utils.jsAttr(n.id)}, {notes:this.value})">${Utils.escapeHtml(n.notes || '')}</textarea>
+              <div class="help">Use @Name or @[Full Name] to link another node. Type @ for suggestions. Removing a reference removes its automatic link.</div>
+              <div id="node-mentions" style="margin-top:8px"></div>
             </div>
 
             <div style="display:flex; gap:10px; flex-wrap:wrap">
@@ -2147,12 +2217,14 @@
             </div>
 
             ${quick}
+            <div style="margin-top:12px"><label class="help">Neighbourhood focus</label><div class="card-actions">${[1,2,3].map(h=>`<button class="btn btn-sec" onclick="Views.focus(${Utils.jsAttr(n.id)},${h})">${h} step${h>1?'s':''}</button>`).join('')}<button class="btn btn-sec" onclick="Views.neighbourhood=null;Views.apply()">Clear focus</button></div></div>
 
             <div style="margin-top:10px; color:var(--muted); font-family:var(--font-mono); font-size:0.72rem">
               Tip: Link tool supports click-to-link. Hold <b>Alt</b> while linking to set link type/label.
             </div>
           </div>
 
+          ${NodeDetails.timelineHtml(n)}
           <div class="p-sec">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
               <div style="color:var(--muted); font-size:0.75rem">RAW DATA</div>
@@ -2164,9 +2236,11 @@
           <div class="p-sec">
             <button class="btn btn-danger" style="width:100%" onclick="Graph.delSel()">DELETE NODE</button>
           </div>
+          ${NodeDetails.sourcesHtml(n)}
         `;
 
         document.body.classList.add('insp-open');
+        NodeDetails.attach(n);
         this.stats();
       },
 
@@ -2374,6 +2448,7 @@
           Logger.log(`Import normalized ${graph.nodes.length-normalized.nodes.length} invalid nodes and ${graph.links.length-normalized.links.length} duplicate or invalid links.`, 'wrn');
         }
         Store.sync();
+        Views.reset(false);
         Store.state = normalized;
         Graph.clearSelection();
         const meta = obj._meta || graph._meta || {};
@@ -2410,14 +2485,15 @@
     const App = { undo: () => Store.undo(), redo: () => Store.redo() };
 
     // --- BOOT ---
-    window.onload = () => {
+    window.onload = async () => {
       if (typeof ForceGraph !== 'function') {
         Logger.log('ForceGraph is not available. Verify the script tag and network.', 'err');
         UI.setStatus('Engine load failed.');
         return;
       }
 
-      Store.init();
+      const recovered = await Recovery.latest();
+      Store.init(recovered);
       Graph.init();
       Logger.log(`TitanGraph v${Config.version} Online`, 'suc');
       UI.setStatus('Ready.');
@@ -2484,6 +2560,7 @@
           Graph.linkFrom = null;
           Graph.linkDrag.active = false;
           Areas.draft = null;
+          Selection.box = null;
           UI.closeModal();
           UI.setStatus('Ready.');
           UI.updateModePill();
@@ -2491,6 +2568,7 @@
 
         if (!e.ctrlKey && !e.altKey && !e.metaKey) {
           if (e.key === 'v' || e.key === 'V') Tools.set('move');
+          if (e.key === 'h' || e.key === 'H') Tools.set('pan');
           if (e.key === 'l' || e.key === 'L') Tools.set('link');
           if (e.key === 'a' || e.key === 'A') Tools.set('area');
           if (e.key === '?' ) UI.toggleHints();
@@ -2519,7 +2597,7 @@
       });
 
       window.addEventListener('blur', () => {
-        Tools.shiftLink = false; Graph.linkDrag.active = false; Areas.draft = null; Tools.applyNodeDrag();
+        Tools.shiftLink = false; Graph.linkDrag.active = false; Areas.draft = null; Selection.box = null; Tools.applyNodeDrag();
       });
 
       UI.stats();

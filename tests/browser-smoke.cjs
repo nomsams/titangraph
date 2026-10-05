@@ -8,7 +8,10 @@ const os = require('node:os');
 
 (async () => {
   const output = fs.mkdtempSync(path.join(os.tmpdir(),'titangraph-check-'));
-  const server=http.createServer((req,res)=>{ res.setHeader('Content-Type','text/html; charset=utf-8'); res.end(fs.readFileSync(path.join(__dirname,'../index.html'))); });
+  const server=http.createServer((req,res)=>{
+    const script=req.url==='/features.js';res.setHeader('Content-Type',script?'application/javascript':'text/html; charset=utf-8');
+    res.end(fs.readFileSync(path.join(__dirname,script?'../features.js':'../index.html')));
+  });
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   let browser;
   try {
@@ -35,7 +38,11 @@ const os = require('node:os');
       assert.equal(exported.nodes[0]._degree,undefined);
       assert.equal(exported.links[0].source,'0');
       await page.locator('#f-in').setInputFiles(file);
-      await page.waitForFunction(n=>Store.state.nodes.length===n,count);
+      await page.waitForFunction(()=>document.getElementById('f-in').value==='');
+      await page.evaluate(async()=>await Recovery.queue);
+      await page.reload();await page.waitForFunction(()=>!!Graph.instance);
+      assert.equal(await page.evaluate(()=>Store.state.nodes.length),count);
+      assert.equal(await page.evaluate(()=>Store.state.nodes[0].notes),graph.nodes[0].notes);
       console.log(`PASS: ${count} nodes / ${count*3} links, ${fs.statSync(file).size} byte JSON download and re-import`);
     }
 
