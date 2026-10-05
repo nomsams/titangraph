@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TitanGraph v14.5 | 2D Precision</title>
+  <title>TitanGraph v14.6 | 2D Precision</title>
 
   <!-- CORE ENGINE (2D ONLY) -->
   <script src="https://cdn.jsdelivr.net/npm/force-graph@1.51.0/dist/force-graph.min.js"></script>
@@ -173,7 +173,7 @@
 <body>
   <div id="app">
     <header>
-      <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v14.5</div>
+      <div class="brand"><i class="fas fa-project-diagram"></i> TITAN v14.6</div>
       <div class="tools">
         
         <div class="switch-wrap">
@@ -202,7 +202,8 @@
         <button class="btn btn-sec" onclick="IO.export()" title="Export JSON (Ctrl+S)">JSON</button>
         <button class="btn btn-sec" onclick="IO.exportPng()" title="Export PNG (Ctrl+P)"><i class="fas fa-camera"></i></button>
         <button class="btn" onclick="document.getElementById('f-in').click()" title="Import JSON (Ctrl+O)">Import</button>
-        <input type="file" id="f-in" hidden onchange="IO.import(this)">
+        <input type="file" id="f-in" accept=".json,application/json" hidden onchange="IO.import(this)">
+        <button class="btn btn-sec" onclick="UI.openSettings()" title="Settings" aria-label="Settings"><i class="fas fa-gear"></i></button>
       </div>
     </header>
 
@@ -216,6 +217,7 @@
       <div class="t-btn" onclick="Graph.addManual()" data-tip="Add Node (N) / Double-click background">
         <i class="fas fa-plus"></i>
       </div>
+      <button class="t-btn" id="t-area" onclick="Tools.set('area')" data-tip="Draw / Edit Areas (A)" aria-label="Draw areas"><i class="fas fa-vector-square"></i></button>
 
       <div style="width:20px; height:1px; background:var(--border)"></div>
 
@@ -353,20 +355,23 @@
 
   <script>
     /**
-     * TITAN GRAPH v14.5
+     * TITAN GRAPH v14.6
      */
 
     const Config = {
-      version: "14.5",
+      version: "14.6",
       storageKey: "titan_v14",
       theme: 'dark',
       notesPreview: false,
+      deathIcons: false,
       colors: {
         domain: '#00ff9d',
         ip: '#00ccff',
         email: '#ff6b6b',
         person: '#ffcc00',
         company: '#ff8800',
+        event: '#55bbee',
+        organisation: '#a78bfa',
         location: '#ff00ff',
         asn: '#aa00ff',
         default: '#888'
@@ -377,6 +382,8 @@
         email: '\uf0e0',       // envelope
         person: '\uf007',      // user
         company: '\uf1ad',     // building
+        event: '\uf133',
+        organisation: '\uf0c0',
         location: '\uf3c5',    // map-marker
         asn: '\uf19c',         // university
         default: '\uf128'      // question
@@ -413,8 +420,12 @@
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#39;'),
+      jsAttr: (value) => Utils.escapeHtml(JSON.stringify(value)),
       isObj: (v) => v && typeof v === 'object',
       endpointId: (ep) => Utils.isObj(ep) ? (ep.id ?? ep._id ?? ep.label ?? ep) : ep,
+      tags: (v) => [...new Set((Array.isArray(v) ? v : String(v || '').split(',')).map(t => String(t).trim()).filter(Boolean))],
+      nodeColor: (n) => n.type === 'person' && n.deceased ? '#ff4444' : (n.color || Config.colors[n.type] || Config.colors.default),
+      nodeRadius: (n) => (6 + Math.min(3, Math.max(0, (n._degree || 0) - 1) * 0.5)) * ((n._degree || 0) >= 7 ? 1.5 : 1),
       isIp: (s) => /^\d{1,3}(\.\d{1,3}){3}$/.test(String(s||'').trim()),
       isEmail: (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s||'').trim()),
       isDomainLike: (s) => {
@@ -455,7 +466,8 @@
       hIdx: -1,
 
       init() {
-        const s = localStorage.getItem(Config.storageKey);
+        let s;
+        try { s = localStorage.getItem(Config.storageKey); } catch { Logger.log('Browser storage unavailable. Export JSON to keep your work.', 'wrn'); }
         if (s) {
           try {
             this.state = JSON.parse(s);
@@ -467,8 +479,8 @@
           this.reset();
         }
 
-        this.state = this.normalizeState(this.state);
-        if (!this.state.nodes.length) this.reset();
+        try { this.state = this.normalizeState(this.state); }
+        catch (e) { Logger.log('Session could not be restored: ' + e.message, 'err'); this.reset(); }
 
         // Load persisted UI settings
         const ui = this.loadUiSettings();
@@ -483,6 +495,7 @@
         // Apply theme and notes preview settings
         Config.theme = ui.theme === 'light' ? 'light' : 'dark';
         Config.notesPreview = !!ui.notesPreview;
+        Config.deathIcons = !!ui.deathIcons;
         
         document.getElementById('theme-toggle').checked = (Config.theme === 'light');
         document.getElementById('notes-toggle').checked = Config.notesPreview;
@@ -513,41 +526,51 @@
           hints: document.body.classList.contains('show-hints'),
           snap: Config.snap.enabled,
           theme: Config.theme,
-          notesPreview: Config.notesPreview
+          notesPreview: Config.notesPreview,
+          deathIcons: Config.deathIcons
         };
-        localStorage.setItem(Config.storageKey + '_ui', JSON.stringify(ui));
+        try { localStorage.setItem(Config.storageKey + '_ui', JSON.stringify(ui)); }
+        catch { Logger.log('Settings could not be stored.', 'wrn'); }
       },
 
       reset() {
         const id = Utils.uuid();
         this.state = {
           nodes: [{ id, label: 'Start', type: 'default', color: null, x: 0, y: 0, fx: 0, fy: 0, val: 1, notes: '', meta: {} }],
-          links: []
+          links: [], areas: []
         };
       },
 
       normalizeState(st) {
-        const out = { nodes: [], links: [] };
+        const out = { nodes: [], links: [], areas: [] };
         const nodes = Array.isArray(st?.nodes) ? st.nodes : [];
         const links = Array.isArray(st?.links) ? st.links : [];
+        const nodeIds = new Set();
 
         // nodes
         for (const n of nodes) {
           if (!n) continue;
-          const id = n.id || Utils.uuid();
+          const id = String(n.id ?? n._id ?? Utils.uuid());
+          if (nodeIds.has(id)) throw new Error('Duplicate node ID: ' + id);
+          nodeIds.add(id);
           const label = (n.label ?? n.name ?? 'Node').toString();
-          const dt = (n.type ?? Utils.detectType(label)).toString();
-          const type = Config.colors[dt] ? dt : 'default';
+          let dt = (n.type ?? Utils.detectType(label)).toString().toLowerCase();
+          if (dt === 'organization') dt = 'organisation';
+          const type = Object.hasOwn(Config.colors, dt) ? dt : 'default';
           const x = Number.isFinite(n.x) ? n.x : 0;
           const y = Number.isFinite(n.y) ? n.y : 0;
-          const fx = (n.fx === null || n.fx === undefined) ? null : n.fx;
-          const fy = (n.fy === null || n.fy === undefined) ? null : n.fy;
+          const fx = n.fx === null ? null : (Number.isFinite(n.fx) ? n.fx : x);
+          const fy = n.fy === null ? null : (Number.isFinite(n.fy) ? n.fy : y);
           out.nodes.push({
             id, label, type, x, y, fx, fy,
             color: n.color || null,
             val: Number.isFinite(n.val) ? n.val : 1,
             notes: (n.notes ?? '').toString(),
-            meta: Utils.isObj(n.meta) ? n.meta : {}
+            meta: Utils.isObj(n.meta) ? n.meta : (Utils.isObj(n.data) ? n.data : {}),
+            ...(n.data !== undefined ? { data: n.data } : {}),
+            tags: Utils.tags(n.tags),
+            deceased: n.deceased === true || n.alive === false,
+            deathType: String(n.deathType ?? '')
           });
         }
 
@@ -556,11 +579,11 @@
         // links
         for (const l of links) {
           if (!l) continue;
-          const source = Utils.endpointId(l.source);
-          const target = Utils.endpointId(l.target);
+          const source = String(Utils.endpointId(l.source));
+          const target = String(Utils.endpointId(l.target));
           if (!nodeIdSet.has(source) || !nodeIdSet.has(target)) continue;
           out.links.push({
-            id: l.id || Utils.uuid(),
+            id: String(l.id ?? Utils.uuid()),
             source,
             target,
             label: (l.label ?? '').toString(),
@@ -568,27 +591,37 @@
             directed: (l.directed ?? true) === false ? false : true,
             dashed: !!l.dashed,
             color: l.color || null,
-            meta: Utils.isObj(l.meta) ? l.meta : {}
+            meta: Utils.isObj(l.meta) ? l.meta : (Utils.isObj(l.data) ? l.data : {}),
+            ...(l.data !== undefined ? { data: l.data } : {})
           });
         }
 
         // Deduplicate links
         const seen = new Set();
         out.links = out.links.filter(l => {
-          const k = `${l.source}=>${l.target}::${l.type}::${l.label}`;
+          const k = JSON.stringify([l.source, l.target, l.type, l.label, l.directed, l.dashed, l.color]);
           if (seen.has(k)) return false;
           seen.add(k);
           return true;
         });
 
+        const areaIds = new Set();
+        for (const a of Array.isArray(st?.areas) ? st.areas : []) {
+          if (!a || ![a.x, a.y, a.width, a.height].every(Number.isFinite) || a.width <= 0 || a.height <= 0) continue;
+          const id = String(a.id ?? Utils.uuid());
+          if (areaIds.has(id)) throw new Error('Duplicate area ID: ' + id);
+          areaIds.add(id);
+          out.areas.push({ id, x:a.x, y:a.y, width:a.width, height:a.height, text:String(a.text ?? ''), color:/^#[0-9a-f]{6}$/i.test(a.color) ? a.color : '#00ff9d' });
+        }
         return out;
       },
 
       sync() {
         if (!Graph.instance) return;
         const gNodes = Graph.instance.graphData().nodes || [];
+        const nodesById = new Map(this.state.nodes.map(n => [n.id, n]));
         for (const gn of gNodes) {
-          const sn = this.state.nodes.find(n => n.id === gn.id);
+          const sn = nodesById.get(gn.id);
           if (!sn) continue;
           if (Number.isFinite(gn.x)) sn.x = gn.x;
           if (Number.isFinite(gn.y)) sn.y = gn.y;
@@ -598,11 +631,12 @@
       },
 
       persist() {
-        localStorage.setItem(Config.storageKey, JSON.stringify(this.state));
+        try { localStorage.setItem(Config.storageKey, JSON.stringify(this.state)); return true; }
+        catch { Logger.log('Autosave failed: browser storage is full or unavailable. Export JSON to keep your work.', 'wrn'); return false; }
       },
 
-      save(reason = '') {
-        this.sync();
+      save(reason = '', syncCoordinates = true) {
+        if (syncCoordinates) this.sync();
 
         if (this.hIdx < this.history.length - 1) {
           this.history = this.history.slice(0, this.hIdx + 1);
@@ -625,6 +659,7 @@
           this.state = Utils.copy(this.history[this.hIdx]);
           this.state = this.normalizeState(this.state);
           Graph.refresh();
+          this.persist();
           Logger.log('Undo', 'inf');
         }
       },
@@ -635,6 +670,7 @@
           this.state = Utils.copy(this.history[this.hIdx]);
           this.state = this.normalizeState(this.state);
           Graph.refresh();
+          this.persist();
           Logger.log('Redo', 'inf');
         }
       },
@@ -658,11 +694,15 @@
         const n = {
           id: Utils.uuid(),
           label: label || 'Node',
-          type: Config.colors[dt] ? dt : 'default',
+          type: Object.hasOwn(Config.colors, dt) ? dt : 'default',
           color: d.color || null,
           val: 1,
           notes: (d.notes ?? '').toString(),
           meta: d.meta || {},
+          ...(d.data !== undefined ? { data: Utils.copy(d.data) } : {}),
+          tags: Utils.tags(d.tags),
+          deceased: !!d.deceased,
+          deathType: String(d.deathType ?? ''),
           x, y,
           fx: x,
           fy: y
@@ -711,9 +751,11 @@
       },
 
       updateNode(id, up) {
+        this.sync();
         const n = this.state.nodes.find(x => x.id === id);
         if (!n) return;
         Object.assign(n, up);
+        if ('tags' in up) n.tags = Utils.tags(up.tags);
 
         if (up.label && !up.type) {
           if (n.type === 'default') {
@@ -722,14 +764,14 @@
           }
         }
 
-        if (up.type && !Config.colors[up.type]) n.type = 'default';
+        if (up.type && !Object.hasOwn(Config.colors, up.type)) n.type = 'default';
 
         if (n.fx !== null && n.fy !== null) {
           n.fx = Number.isFinite(n.fx) ? n.fx : n.x;
           n.fy = Number.isFinite(n.fy) ? n.fy : n.y;
         }
 
-        this.save('Node updated');
+        this.save('Node updated', false);
         Graph.refresh();
       },
 
@@ -753,6 +795,115 @@
         this.state.links = this.state.links.filter(l => l.id !== id);
         this.save('Link deleted');
         Graph.refresh();
+      }
+    };
+
+    // Cached monochrome symbols, drawn without image assets or network requests.
+    const DeathIcons = {
+      types: {
+        suicide: ['Suicide', 'M8 3 H16 V7 H20 V11 H16 V21 H8 V11 H4 V7 H8 Z'],
+        drowned: ['Drowned', 'M2 14 Q5 10 8 14 T14 14 T22 14 M2 19 Q5 15 8 19 T14 19 T22 19 M12 3 V10 M9 7 L12 10 L15 7'],
+        hanged: ['Hanged themself', 'M3 21 V3 H16 V8 M13 8 H19 L20 14 L16 18 L12 14 Z'],
+        shot_self: ['Shot themself', 'M3 8 H21 V12 H11 L9 19 H4 L6 12 H3 Z M16 3 V5 M21 4 L19 6'],
+        hit_by_car: ['Hit by a car', 'M2 12 H13 L11 7 H5 Z M2 12 V17 H13 V12 M4 17 V20 M11 17 V20 M18 3 A2 2 0 1 0 18 7 A2 2 0 1 0 18 3 M18 8 V13 L15 18 M18 13 L22 18 M15 10 H22'],
+        airplane_accident: ['Airplane accident', 'M12 2 V21 M12 7 L3 13 V16 L12 12 L21 16 V13 L12 7 M8 21 L12 18 L16 21'],
+        cancer: ['Cancer', 'M8 3 Q12 0 16 3 Q19 7 13 13 L6 22 L3 19 L11 9 Q16 3 8 3 M9 12 L21 19 L18 22 L6 7'],
+        sickness: ['Sickness', 'M8 3 H16 V8 H21 V16 H16 V21 H8 V16 H3 V8 H8 Z'],
+        home_invasion: ['Home invasion', 'M2 11 L12 2 L22 11 M5 9 V22 H19 V9 M10 22 V14 H14 V22 M12 6 V10 M12 12 V13'],
+        jumped: ['Jumped off a building', 'M2 22 V3 H10 V22 M5 6 H7 M5 10 H7 M5 14 H7 M15 7 L18 10 L21 7 M18 10 V17 M15 14 L18 17 L21 14 M13 22 H23'],
+        shot: ['Got shot', 'M3 8 H21 V12 H11 L9 19 H4 L6 12 H3 Z M21 3 L18 6 M15 2 V5'],
+        stabbed: ['Got stabbed', 'M17 2 L21 6 L10 17 L7 14 Z M5 12 L12 19 M7 16 L2 21 L4 23 L9 18'],
+        fire: ['Fire', 'M12 2 Q17 8 15 12 L19 8 Q25 19 16 22 Q2 25 3 14 L7 9 L7 16 Q12 12 12 2 Z'],
+        car_accident: ['Car accident', 'M3 12 H21 L18 6 H6 Z M3 12 V19 H21 V12 M6 19 V22 M18 19 V22 M5 15 H8 M16 15 H19 M9 2 L12 5 L15 2'],
+        other: ['Other / Unknown', 'M8 7 Q8 2 13 3 Q20 4 16 9 L12 12 V15 M12 19 V21']
+      },
+      cache: new Map(),
+      draw(ctx, x, y, size, type) {
+        if (!this.cache.has(type)) this.cache.set(type, new Path2D(this.types[type][1]));
+        ctx.save(); ctx.translate(x - size/2, y - size/2); ctx.scale(size/24, size/24);
+        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(12,12,15,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 1.8; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.stroke(this.cache.get(type)); ctx.restore();
+      },
+      options(value = '') {
+        return `<option value="">Unspecified</option>` + Object.entries(this.types).map(([key, [label]]) => `<option value="${key}" ${key === value ? 'selected' : ''}>${label}</option>`).join('');
+      }
+    };
+
+    const Areas = {
+      draft: null,
+      attach(canvas) {
+        const coords = e => {
+          const r = canvas.getBoundingClientRect();
+          return Graph.instance.screen2GraphCoords(e.clientX-r.left, e.clientY-r.top);
+        };
+        canvas.addEventListener('mousedown', e => {
+          if (Tools.effective() !== 'area' || e.button !== 0) return;
+          e.preventDefault(); e.stopImmediatePropagation();
+          const p = coords(e); this.draft = { start:p, end:p };
+        }, true);
+        window.addEventListener('mousemove', e => { if (this.draft) this.draft.end = coords(e); });
+        window.addEventListener('mouseup', e => {
+          if (!this.draft || e.button !== 0) return;
+          const d = this.draft; this.draft = null;
+          const end = coords(e);
+          const width = Math.abs(end.x-d.start.x), height = Math.abs(end.y-d.start.y);
+          if (width * Graph.instance.zoom() < 6 && height * Graph.instance.zoom() < 6) {
+            const a = [...Store.state.areas].reverse().find(a => end.x >= a.x && end.x <= a.x+a.width && end.y >= a.y && end.y <= a.y+a.height);
+            if (a) this.edit(a);
+            return;
+          }
+          if (width < 10 || height < 10) { UI.toast('Area too small', 'Draw a larger rectangle.', 1600); return; }
+          this.edit({ id:Utils.uuid(), x:Math.min(d.start.x,end.x), y:Math.min(d.start.y,end.y), width, height, text:'', color:'#00ff9d' }, true);
+        });
+        canvas.addEventListener('click', e => { if (Tools.effective() === 'area') { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+      },
+      draw(ctx, k) {
+        ctx.save();
+        for (const a of Store.state.areas || []) {
+          ctx.fillStyle = a.color + '20'; ctx.strokeStyle = a.color; ctx.lineWidth = 1 / k;
+          ctx.fillRect(a.x,a.y,a.width,a.height); ctx.strokeRect(a.x,a.y,a.width,a.height);
+          ctx.save(); ctx.beginPath(); ctx.rect(a.x,a.y,a.width,a.height); ctx.clip();
+          ctx.font = `${14/k}px Inter`; ctx.fillStyle = Config.theme === 'light' ? '#111' : '#fff'; ctx.textBaseline = 'top';
+          let y = a.y + 8/k;
+          for (const paragraph of a.text.split('\n')) {
+            let line = '';
+            for (const word of paragraph.split(' ')) {
+              const next = line ? line + ' ' + word : word;
+              if (line && ctx.measureText(next).width > a.width-16/k) { ctx.fillText(line,a.x+8/k,y); y+=18/k; line=word; }
+              else line=next;
+            }
+            ctx.fillText(line,a.x+8/k,y); y+=18/k;
+            if (y > a.y+a.height) break;
+          }
+          ctx.restore();
+        }
+        if (this.draft) {
+          const d=this.draft; ctx.strokeStyle = '#888'; ctx.setLineDash([5/k,4/k]); ctx.lineWidth=1/k;
+          ctx.strokeRect(d.start.x,d.start.y,d.end.x-d.start.x,d.end.y-d.start.y);
+        }
+        ctx.restore();
+      },
+      edit(a, isNew = false) {
+        UI.openModal(isNew ? 'Add Area' : 'Edit Area', () => `
+          <div class="form-row"><label>TEXT</label><textarea id="area-text">${Utils.escapeHtml(a.text)}</textarea></div>
+          <div class="m-grid">${['x','y','width','height'].map(key => `<div class="form-row"><label>${key.toUpperCase()}</label><input type="number" step="any" id="area-${key}" value="${a[key]}"></div>`).join('')}</div>
+          <div class="form-row"><label>COLOR</label><input type="color" id="area-color" value="${a.color}"></div>
+          ${isNew ? '' : '<button class="btn btn-danger" id="area-delete">DELETE AREA</button>'}
+        `, close => {
+          const updated = { ...a, text:document.getElementById('area-text').value, color:document.getElementById('area-color').value };
+          for (const key of ['x','y','width','height']) {
+            const input=document.getElementById('area-'+key); updated[key]=input.value === '' ? NaN : Number(input.value);
+          }
+          if (![updated.x,updated.y,updated.width,updated.height].every(Number.isFinite) || updated.width <= 0 || updated.height <= 0) { UI.toast('Invalid area', 'Enter a valid position and positive width and height.'); return; }
+          if (isNew) Store.state.areas.push(updated);
+          else Object.assign(Store.state.areas.find(x => x.id === a.id),updated);
+          Store.save('Area updated'); Graph.refresh(); close();
+        });
+        if (!isNew) document.getElementById('area-delete').onclick = () => {
+          Store.state.areas = Store.state.areas.filter(x => x.id !== a.id);
+          Store.save('Area deleted'); Graph.refresh(); UI.closeModal();
+        };
       }
     };
 
@@ -791,14 +942,19 @@
         const el = document.getElementById('graph-canvas');
         this.instance = ForceGraph()(el)
           .backgroundColor(Config.theme === 'light' ? '#f4f4f5' : '#0a0a0a')
-          .nodeLabel(n => n.label)
-          .nodeColor(n => n.color || Config.colors[n.type] || Config.colors.default)
+          .nodeLabel(n => Utils.escapeHtml(n.label))
+          .nodeColor(Utils.nodeColor)
+          .nodeRelSize(1)
+          .nodeVal(n => Utils.nodeRadius(n) ** 2)
+          .nodePointerAreaPaint((n, color, ctx) => {
+            ctx.fillStyle = color; ctx.beginPath(); ctx.arc(n.x, n.y, Utils.nodeRadius(n), 0, Math.PI * 2); ctx.fill();
+          })
           .linkColor(l => l.color || Config.linkColors[(l.type ?? 'rel')] || Config.linkColors.default)
           .linkWidth(l => (l.width ?? 2))
           .linkLineDash(l => l.dashed ? [4, 4] : null)
           .linkDirectionalArrowLength(l => (l.directed === false ? 0 : 4))
           .linkDirectionalArrowRelPos(1)
-          .linkLabel(l => l.label ? `${l.type || 'rel'}: ${l.label}` : (l.type || 'rel'))
+          .linkLabel(l => Utils.escapeHtml(l.label ? `${l.type || 'rel'}: ${l.label}` : (l.type || 'rel')))
           .d3AlphaDecay(0.12)
           .d3VelocityDecay(0.65)
 
@@ -857,12 +1013,7 @@
 
           // Custom node render
           .nodeCanvasObject((n, ctx, k) => {
-            const deg = n._degree || 0;
-            let extra = 0;
-            if (deg > 1) {
-              extra = Math.min(3, (deg - 1) * 0.5); // Max 50% extra size (base 6 -> max 9)
-            }
-            const r = 6 + extra;
+            const r = Utils.nodeRadius(n);
 
             // Selected halo
             if (this.selectedNode && n.id === this.selectedNode.id) {
@@ -886,7 +1037,7 @@
             // Node body
             ctx.beginPath();
             ctx.arc(n.x, n.y, r, 0, 2 * Math.PI);
-            ctx.fillStyle = n.color || Config.colors[n.type] || '#888';
+            ctx.fillStyle = Utils.nodeColor(n);
             ctx.fill();
 
             // Icon
@@ -894,10 +1045,12 @@
             ctx.fillStyle = '#000';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            const iconSize = (10 + (extra * 1.5)) / k;
+            const iconSize = r * 1.35;
             ctx.font = `900 ${iconSize}px "Font Awesome 6 Free"`;
             ctx.fillText(Config.icons[n.type] || Config.icons.default, n.x, n.y);
             ctx.restore();
+
+            if (Config.deathIcons && n.type === 'person' && n.deceased && Object.hasOwn(DeathIcons.types, n.deathType)) DeathIcons.draw(ctx, n.x + r, n.y - r, 12 / k, n.deathType);
 
             // Label background plate
             const label = String(n.label ?? '');
@@ -953,6 +1106,15 @@
             this.selectNode(n);
           })
 
+          .onNodeDragEnd(n => {
+            const step = Config.snap.step;
+            if (Config.snap.enabled) { n.x = Math.round(n.x/step)*step; n.y = Math.round(n.y/step)*step; }
+            n.fx = n.x; n.fy = n.y;
+            Store.save('Node moved');
+            this.selectedNode = Store.state.nodes.find(x => x.id === n.id);
+            this.selectedLink = null; UI.inspNode(this.selectedNode);
+          })
+
           .onLinkClick((l) => {
             this.selectLink(l);
           })
@@ -970,6 +1132,7 @@
           })
 
           .onBackgroundClick(() => {
+            if (Tools.effective() === 'area') return;
             if (Tools.effective() === 'link' && this.linkFrom) {
               this.linkFrom = null;
               UI.toast('Link canceled', 'Click a node to start linking again.', 1200);
@@ -991,6 +1154,7 @@
         this.resize();
         window.addEventListener('resize', () => this.resize());
         this.attachCanvasHandlers(el);
+        this.instance.onRenderFramePre((ctx, k) => Areas.draw(ctx, k));
 
         this.refresh();
         Tools.applyNodeDrag();
@@ -1065,6 +1229,7 @@
         };
 
         const onDblClick = (evt) => {
+          if (Tools.effective() === 'area') return;
           updateMouse(evt);
           if (this.hoverNode || this.hoverLink) return;
           this.openAddNodeModal({ x: this.mouse.gx, y: this.mouse.gy });
@@ -1111,6 +1276,7 @@
           window.addEventListener('mouseup', onUp);
           canvas.addEventListener('dblclick', onDblClick);
           canvas.addEventListener('contextmenu', onCtx);
+          Areas.attach(canvas);
           return true;
         };
 
@@ -1126,22 +1292,21 @@
       refresh() {
         if (!this.instance) return;
         Store.ensurePinning();
+        if (this.selectedNode) this.selectedNode = Store.state.nodes.find(n => n.id === this.selectedNode.id) || null;
+        if (this.selectedLink) this.selectedLink = Store.state.links.find(l => l.id === this.selectedLink.id) || null;
 
         // Calculate degrees for supernode sizing
-        const degrees = {};
+        const degrees = new Map();
         Store.state.links.forEach(l => {
           const s = Utils.endpointId(l.source);
           const t = Utils.endpointId(l.target);
-          degrees[s] = (degrees[s] || 0) + 1;
-          degrees[t] = (degrees[t] || 0) + 1;
-        });
-        Store.state.nodes.forEach(n => {
-          n._degree = degrees[n.id] || 0;
+          degrees.set(s, (degrees.get(s) || 0) + 1);
+          degrees.set(t, (degrees.get(t) || 0) + 1);
         });
 
         const data = {
           // Sort nodes by degree so supernodes render on top
-          nodes: Store.state.nodes.map(n => ({ ...n })).sort((a, b) => (a._degree || 0) - (b._degree || 0)),
+          nodes: Store.state.nodes.map(n => ({ ...n, _degree:degrees.get(n.id) || 0 })).sort((a, b) => a._degree - b._degree),
           links: Store.state.links.map(l => ({ ...l }))
         };
 
@@ -1218,6 +1383,8 @@
           color: n.color,
           notes: n.notes,
           meta: Utils.copy(n.meta || {}),
+          ...(n.data !== undefined ? { data: Utils.copy(n.data) } : {}),
+          tags: [...(n.tags || [])], deceased: n.deceased, deathType: n.deathType,
           x: (n.x || 0) + 40,
           y: (n.y || 0) + 30
         });
@@ -1229,6 +1396,7 @@
       oneShotLayout() {
         if (!this.instance) return;
         Store.state.nodes.forEach(n => { n.fx = null; n.fy = null; });
+        this.refresh();
         this.instance.d3ReheatSimulation();
 
         UI.toast('Auto layout', 'Running a short physics burst to spread nodes, then pinning.', 1600);
@@ -1237,7 +1405,7 @@
         setTimeout(() => {
           Store.sync();
           Store.state.nodes.forEach(n => { n.fx = n.x; n.fy = n.y; });
-          Store.save('Auto layout applied');
+          Store.save('Auto layout applied', false);
           this.refresh();
           UI.setStatus('Auto layout done.');
           Logger.log('Auto layout done.', 'suc');
@@ -1267,13 +1435,7 @@
 
       // add nodes
       addManual() {
-        const l = prompt('Label:');
-        if (!l) return;
-        const c = this.safeScreenCenterGraphCoords();
-        const n = Store.addNode({ label: l, x: c.x, y: c.y });
-        this.refresh();
-        this.selectNode(n);
-        Logger.log(`Added: ${l}`, 'suc');
+        this.openAddNodeModal(this.safeScreenCenterGraphCoords());
       },
 
       safeScreenCenterGraphCoords() {
@@ -1350,7 +1512,7 @@
           const lbl = (x.label ?? '').toLowerCase();
           const nts = (x.notes ?? '').toLowerCase();
           const meta = JSON.stringify(x.meta || {}).toLowerCase();
-          return lbl.includes(q) || nts.includes(q) || meta.includes(q);
+          return lbl.includes(q) || nts.includes(q) || meta.includes(q) || (x.tags || []).some(t => t.toLowerCase().includes(q));
         });
 
         if (!hits.length) {
@@ -1360,7 +1522,7 @@
         }
 
         resEl.innerHTML = hits.map(n => `
-          <div class="s-hit" onclick="Graph.focusNode('${n.id}')">
+          <div class="s-hit" onclick="Graph.focusNode(${Utils.jsAttr(n.id)})">
             <div>${Utils.escapeHtml(n.label)}</div>
             <div class="s-hit-type">${n.type}</div>
           </div>
@@ -1522,15 +1684,21 @@
       shiftLink: false,
 
       set(t) {
+        Areas.draft = null;
         this.cur = t;
         document.getElementById('t-move').classList.toggle('active', t === 'move');
         document.getElementById('t-link').classList.toggle('active', t === 'link');
+        document.getElementById('t-area').classList.toggle('active', t === 'area');
         UI.updateModePill();
 
         if (t === 'link') {
           Logger.log('Link Mode: click source then target. Drag also works.', 'inf');
           UI.setStatus('Link Mode');
           UI.toast('Link tool', 'Click a source node, then click a target node to link.', 1400);
+        } else if (t === 'area') {
+          Graph.linkFrom = null;
+          UI.setStatus('Areas: drag to draw; click an area to edit.');
+          UI.toast('Areas', 'Drag a rectangle behind nodes. Click inside it to edit text, position, size or delete.', 3000);
         } else {
           Logger.log('Move Mode.', 'inf');
           UI.setStatus('Move Mode');
@@ -1550,6 +1718,7 @@
         if (typeof Graph.instance.enableNodeDrag === 'function') {
           Graph.instance.enableNodeDrag(eff === 'move');
         }
+        Graph.instance.enablePanInteraction(eff !== 'area');
         UI.updateModePill();
       }
     };
@@ -1827,6 +1996,21 @@
       
       toggleHints() { document.body.classList.toggle('show-hints'); Store.saveUiSettings(); },
 
+      openSettings() {
+        this.openModal('Settings', () => `
+          <label style="display:flex;gap:10px;align-items:center"><input type="checkbox" id="setting-death-icons" ${Config.deathIcons ? 'checked' : ''}> Show monochrome death icons for deceased people</label>
+          <p style="color:var(--muted)">Deceased people always appear red. Icons are optional. Nodes with seven or more incoming and outgoing connections are 50% larger.</p>
+        `, close => {
+          Config.deathIcons = document.getElementById('setting-death-icons').checked;
+          Store.saveUiSettings(); Graph.refresh(); close();
+        });
+      },
+
+      updatePerson(id, up) {
+        Store.updateNode(id, up);
+        this.inspNode(Store.state.nodes.find(n => n.id === id));
+      },
+
       clear() {
         document.getElementById('p-cont').innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">Select entity</div>';
         document.body.classList.remove('insp-open');
@@ -1881,7 +2065,7 @@
         const json = n.meta ? JSON.stringify(n.meta, null, 2) : '';
         const types = Object.keys(Config.colors);
         const pinned = n.fx !== null && n.fy !== null;
-        const nodeColor = n.color || Config.colors[n.type] || Config.colors.default;
+        const nodeColor = Utils.nodeColor(n);
 
         let quick = '';
         if (n.type === 'email') {
@@ -1912,28 +2096,38 @@
         }
 
         const paletteHtml = Config.palette.map(c => 
-          `<div style="width:22px;height:22px;border-radius:4px;background:${c};cursor:pointer;border:1px solid var(--border)" onclick="Store.updateNode('${n.id}', {color:'${c}'}); UI.inspNode(Store.state.nodes.find(x=>x.id==='${n.id}'))"></div>`
+          `<div style="width:22px;height:22px;border-radius:4px;background:${c};cursor:pointer;border:1px solid var(--border)" onclick="Store.updateNode(${Utils.jsAttr(n.id)}, {color:'${c}'}); UI.inspNode(Store.state.nodes.find(x=>x.id===${Utils.jsAttr(n.id)}))"></div>`
         ).join('');
 
         c.innerHTML = `
           <div class="p-sec">
             <div class="form-row">
               <label>LABEL</label>
-              <input value="${Utils.escapeHtml(n.label)}" onchange="Store.updateNode('${n.id}', {label:this.value}); UI.inspNode(Store.state.nodes.find(x=>x.id==='${n.id}'))">
+              <input value="${Utils.escapeHtml(n.label)}" onchange="Store.updateNode(${Utils.jsAttr(n.id)}, {label:this.value}); UI.inspNode(Store.state.nodes.find(x=>x.id===${Utils.jsAttr(n.id)}))">
             </div>
 
             <div class="form-row">
               <label>TYPE</label>
-              <select onchange="Store.updateNode('${n.id}', {type:this.value}); UI.inspNode(Store.state.nodes.find(x=>x.id==='${n.id}'))">
+              <select onchange="Store.updateNode(${Utils.jsAttr(n.id)}, {type:this.value}); UI.inspNode(Store.state.nodes.find(x=>x.id===${Utils.jsAttr(n.id)}))">
                 ${types.map(k => `<option value="${Utils.escapeHtml(k)}" ${n.type===k?'selected':''}>${Utils.escapeHtml(k)}</option>`).join('')}
               </select>
             </div>
 
             <div class="form-row">
+              <label>TAGS (comma separated)</label>
+              <input value="${Utils.escapeHtml((n.tags || []).join(', '))}" onchange="Store.updateNode(${Utils.jsAttr(n.id)}, {tags:this.value})">
+            </div>
+            ${n.type === 'person' ? `
+              <div class="form-row"><label>LIFE STATUS</label>
+                <label style="display:flex;gap:10px;align-items:center;color:var(--text)"><input type="checkbox" style="width:auto" ${n.deceased ? 'checked' : ''} onchange="UI.updatePerson(${Utils.jsAttr(n.id)}, {deceased:this.checked})"> Deceased ${n.deceased ? '(red node)' : '(alive)'}</label>
+              </div>
+              ${n.deceased ? `<div class="form-row"><label>TYPE OF DEATH</label><select onchange="UI.updatePerson(${Utils.jsAttr(n.id)}, {deathType:this.value})">${DeathIcons.options(n.deathType)}</select></div>` : ''}
+            ` : ''}
+            <div class="form-row">
               <label>COLOR</label>
               <div style="display:flex; gap:10px; margin-bottom:8px;">
-                <input type="color" value="${nodeColor}" onchange="Store.updateNode('${n.id}', {color:this.value}); UI.inspNode(Store.state.nodes.find(x=>x.id==='${n.id}'))" style="padding:0; height:30px; width:100%; cursor:pointer; border:none; background:transparent;">
-                <button class="btn btn-sec" onclick="Store.updateNode('${n.id}', {color:null}); UI.inspNode(Store.state.nodes.find(x=>x.id==='${n.id}'))" title="Reset to default type color"><i class="fas fa-undo"></i></button>
+                <input type="color" value="${Utils.escapeHtml(nodeColor)}" onchange="Store.updateNode(${Utils.jsAttr(n.id)}, {color:this.value}); UI.inspNode(Store.state.nodes.find(x=>x.id===${Utils.jsAttr(n.id)}))" style="padding:0; height:30px; width:100%; cursor:pointer; border:none; background:transparent;">
+                <button class="btn btn-sec" onclick="Store.updateNode(${Utils.jsAttr(n.id)}, {color:null}); UI.inspNode(Store.state.nodes.find(x=>x.id===${Utils.jsAttr(n.id)}))" title="Reset to default type color"><i class="fas fa-undo"></i></button>
               </div>
               <div style="display:flex; gap:5px; flex-wrap:wrap;">
                 ${paletteHtml}
@@ -1942,13 +2136,13 @@
 
             <div class="form-row">
               <label>NOTES</label>
-              <textarea onchange="Store.updateNode('${n.id}', {notes:this.value})">${Utils.escapeHtml(n.notes || '')}</textarea>
+              <textarea onchange="Store.updateNode(${Utils.jsAttr(n.id)}, {notes:this.value})">${Utils.escapeHtml(n.notes || '')}</textarea>
             </div>
 
             <div style="display:flex; gap:10px; flex-wrap:wrap">
               <button class="btn btn-sec" onclick="Graph.instance.centerAt(${Number.isFinite(n.x)?n.x:0}, ${Number.isFinite(n.y)?n.y:0}, 500); Graph.instance.zoom(4, 600)">FOCUS</button>
-              <button class="btn btn-sec" onclick="Tools.set('link'); Graph.linkFrom = Store.state.nodes.find(x=>x.id==='${n.id}'); UI.setStatus('Link: select target for ${Utils.escapeHtml(n.label)}'); UI.updateModePill();">LINK FROM</button>
-              <button class="btn btn-sec" onclick="UI.pinToggle('${n.id}')">${pinned ? 'UNPIN' : 'PIN'}</button>
+              <button class="btn btn-sec" onclick="Graph.ctxStartLinkFrom()">LINK FROM</button>
+              <button class="btn btn-sec" onclick="UI.pinToggle(${Utils.jsAttr(n.id)})">${pinned ? 'UNPIN' : 'PIN'}</button>
               <button class="btn btn-sec" onclick="Graph.duplicateSelected()">DUPLICATE</button>
             </div>
 
@@ -1962,7 +2156,7 @@
           <div class="p-sec">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
               <div style="color:var(--muted); font-size:0.75rem">RAW DATA</div>
-              <button class="btn btn-sec" style="padding:3px 10px" onclick="UI.editJson('${n.id}')">EDIT JSON</button>
+              <button class="btn btn-sec" style="padding:3px 10px" onclick="UI.editJson(${Utils.jsAttr(n.id)})">EDIT JSON</button>
             </div>
             <div class="json-box">${Utils.escapeHtml(json)}</div>
           </div>
@@ -1988,7 +2182,7 @@
         const linkColor = l.color || Config.linkColors[l.type] || Config.linkColors.default;
 
         const paletteHtml = Config.palette.map(col => 
-          `<div style="width:22px;height:22px;border-radius:4px;background:${col};cursor:pointer;border:1px solid var(--border)" onclick="Store.updateLink('${l.id}', {color:'${col}'}); UI.inspLink(Store.state.links.find(x=>x.id==='${l.id}'))"></div>`
+          `<div style="width:22px;height:22px;border-radius:4px;background:${col};cursor:pointer;border:1px solid var(--border)" onclick="Store.updateLink(${Utils.jsAttr(l.id)}, {color:'${col}'}); UI.inspLink(Store.state.links.find(x=>x.id===${Utils.jsAttr(l.id)}))"></div>`
         ).join('');
 
         c.innerHTML = `
@@ -1999,19 +2193,19 @@
 
             <div class="form-row">
               <label>TYPE</label>
-              <select onchange="Store.updateLink('${l.id}', {type:this.value}); UI.inspLink(Store.state.links.find(x=>x.id==='${l.id}'))">
+              <select onchange="Store.updateLink(${Utils.jsAttr(l.id)}, {type:this.value}); UI.inspLink(Store.state.links.find(x=>x.id===${Utils.jsAttr(l.id)}))">
                 ${linkTypes.map(t => `<option value="${Utils.escapeHtml(t)}" ${(l.type||'rel')===t?'selected':''}>${Utils.escapeHtml(t)}</option>`).join('')}
               </select>
             </div>
 
             <div class="form-row">
               <label>LABEL</label>
-              <input value="${Utils.escapeHtml(l.label || '')}" placeholder="optional" onchange="Store.updateLink('${l.id}', {label:this.value})" />
+              <input value="${Utils.escapeHtml(l.label || '')}" placeholder="optional" onchange="Store.updateLink(${Utils.jsAttr(l.id)}, {label:this.value})" />
             </div>
 
             <div class="form-row">
               <label>STYLE</label>
-              <select onchange="Store.updateLink('${l.id}', {dashed:this.value==='true'}); UI.inspLink(Store.state.links.find(x=>x.id==='${l.id}'))">
+              <select onchange="Store.updateLink(${Utils.jsAttr(l.id)}, {dashed:this.value==='true'}); UI.inspLink(Store.state.links.find(x=>x.id===${Utils.jsAttr(l.id)}))">
                 <option value="false" ${!l.dashed?'selected':''}>Solid</option>
                 <option value="true" ${l.dashed?'selected':''}>Dashed</option>
               </select>
@@ -2020,8 +2214,8 @@
             <div class="form-row">
               <label>COLOR</label>
               <div style="display:flex; gap:10px; margin-bottom:8px;">
-                <input type="color" value="${linkColor}" onchange="Store.updateLink('${l.id}', {color:this.value}); UI.inspLink(Store.state.links.find(x=>x.id==='${l.id}'))" style="padding:0; height:30px; width:100%; cursor:pointer; border:none; background:transparent;">
-                <button class="btn btn-sec" onclick="Store.updateLink('${l.id}', {color:null}); UI.inspLink(Store.state.links.find(x=>x.id==='${l.id}'))" title="Reset"><i class="fas fa-undo"></i></button>
+                <input type="color" value="${Utils.escapeHtml(linkColor)}" onchange="Store.updateLink(${Utils.jsAttr(l.id)}, {color:this.value}); UI.inspLink(Store.state.links.find(x=>x.id===${Utils.jsAttr(l.id)}))" style="padding:0; height:30px; width:100%; cursor:pointer; border:none; background:transparent;">
+                <button class="btn btn-sec" onclick="Store.updateLink(${Utils.jsAttr(l.id)}, {color:null}); UI.inspLink(Store.state.links.find(x=>x.id===${Utils.jsAttr(l.id)}))" title="Reset"><i class="fas fa-undo"></i></button>
               </div>
               <div style="display:flex; gap:5px; flex-wrap:wrap;">
                 ${paletteHtml}
@@ -2030,7 +2224,7 @@
 
             <div class="form-row">
               <label>DIRECTION</label>
-              <select onchange="Store.updateLink('${l.id}', {directed:this.value==='true'}); UI.inspLink(Store.state.links.find(x=>x.id==='${l.id}'))">
+              <select onchange="Store.updateLink(${Utils.jsAttr(l.id)}, {directed:this.value==='true'}); UI.inspLink(Store.state.links.find(x=>x.id===${Utils.jsAttr(l.id)}))">
                 <option value="true" ${(l.directed===false)?'':'selected'}>directed</option>
                 <option value="false" ${(l.directed===false)?'selected':''}>undirected</option>
               </select>
@@ -2132,34 +2326,64 @@
 
     // --- IO ---
     const IO = {
-      export() {
-        const payload = Utils.copy(Store.state);
-        payload._meta = { 
-          app: 'TitanGraph', 
-          version: Config.version, 
-          exportedAt: new Date().toISOString(),
-          theme: Config.theme,
-          notesPreview: Config.notesPreview
-        };
+      download(blob, filename) {
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(payload, null, 2));
-        a.download = 'titan.json';
-        a.click();
-        Logger.log('Exported JSON.', 'suc');
+        a.href = url; a.download = filename; document.body.appendChild(a);
+        try { a.click(); }
+        finally { a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000); }
+      },
+
+      payload() {
+        Store.sync();
+        const payload = Store.normalizeState(Store.state);
+        payload._meta = {
+          app:'TitanGraph', version:Config.version, exportedAt:new Date().toISOString(),
+          theme:Config.theme, notesPreview:Config.notesPreview, deathIcons:Config.deathIcons
+        };
+        return payload;
+      },
+
+      export() {
+        try {
+          const payload = this.payload();
+          this.download(new Blob([JSON.stringify(payload, null, 2)], { type:'application/json;charset=utf-8' }), 'titan.json');
+          Logger.log(`Exported JSON (${payload.nodes.length} nodes, ${payload.links.length} links).`, 'suc');
+        } catch (e) { Logger.log('JSON export failed: ' + e.message, 'err'); UI.toast('Export failed', e.message, 4000); }
       },
 
       exportPng() {
         try {
           const canvas = document.querySelector('#graph-canvas canvas');
           if (!canvas) { Logger.log('PNG export failed: canvas not found.', 'err'); return; }
-          const a = document.createElement('a');
-          a.download = `titan_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.png`;
-          a.href = canvas.toDataURL('image/png');
-          a.click();
-          Logger.log('Exported PNG.', 'suc');
+          canvas.toBlob(blob => {
+            if (!blob) { Logger.log('PNG export failed.', 'err'); return; }
+            this.download(blob, `titan_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.png`);
+            Logger.log('Exported PNG.', 'suc');
+          }, 'image/png');
         } catch (e) {
           Logger.log('PNG export failed.', 'err');
         }
+      },
+
+      importObject(obj) {
+        const graph = obj?.nodes ? obj : (obj?.graphData ?? obj?.state ?? obj?.data);
+        if (!graph || !Array.isArray(graph.nodes) || !Array.isArray(graph.links)) throw new Error('Expected a graph with nodes and links arrays.');
+        const normalized = Store.normalizeState(graph);
+        if (normalized.nodes.length !== graph.nodes.length || normalized.links.length !== graph.links.length) {
+          Logger.log(`Import normalized ${graph.nodes.length-normalized.nodes.length} invalid nodes and ${graph.links.length-normalized.links.length} duplicate or invalid links.`, 'wrn');
+        }
+        Store.sync();
+        Store.state = normalized;
+        Graph.clearSelection();
+        const meta = obj._meta || graph._meta || {};
+        if (meta.theme === 'dark' || meta.theme === 'light') UI.toggleTheme(meta.theme === 'light');
+        if (meta.notesPreview !== undefined) UI.toggleNotesPreview(!!meta.notesPreview);
+        if (meta.deathIcons !== undefined) Config.deathIcons = !!meta.deathIcons;
+        Store.saveUiSettings();
+        Graph.refresh();
+        Store.save('Imported', false);
+        Graph.fit();
       },
 
       import(el) {
@@ -2169,31 +2393,16 @@
         r.onload = e => {
           try {
             const obj = JSON.parse(e.target.result);
-            Store.state = Store.normalizeState(obj);
-            
-            if (obj._meta) {
-              if (obj._meta.theme) {
-                Config.theme = obj._meta.theme;
-                document.getElementById('theme-toggle').checked = (Config.theme === 'light');
-                UI.toggleTheme(Config.theme === 'light');
-              }
-              if (obj._meta.notesPreview !== undefined) {
-                Config.notesPreview = !!obj._meta.notesPreview;
-                document.getElementById('notes-toggle').checked = Config.notesPreview;
-                UI.toggleNotesPreview(Config.notesPreview);
-              }
-            }
-
-            Store.ensurePinning();
-            Store.save('Imported');
-            Graph.refresh();
+            this.importObject(obj);
             Logger.log('Imported', 'suc');
-          } catch {
-            Logger.log('Import failed (invalid JSON).', 'err');
+          } catch (e) {
+            Logger.log('Import failed: ' + e.message, 'err');
+            UI.toast('Import failed', e.message, 4000);
           } finally {
             el.value = '';
           }
         };
+        r.onerror = () => { el.value=''; Logger.log('Import failed: file could not be read.', 'err'); UI.toast('Import failed', 'File could not be read.', 4000); };
         r.readAsText(f);
       }
     };
@@ -2274,6 +2483,7 @@
           UI.hideCtx();
           Graph.linkFrom = null;
           Graph.linkDrag.active = false;
+          Areas.draft = null;
           UI.closeModal();
           UI.setStatus('Ready.');
           UI.updateModePill();
@@ -2282,6 +2492,7 @@
         if (!e.ctrlKey && !e.altKey && !e.metaKey) {
           if (e.key === 'v' || e.key === 'V') Tools.set('move');
           if (e.key === 'l' || e.key === 'L') Tools.set('link');
+          if (e.key === 'a' || e.key === 'A') Tools.set('area');
           if (e.key === '?' ) UI.toggleHints();
 
           if (e.key === 'n' || e.key === 'N') {
@@ -2301,28 +2512,14 @@
       });
 
       document.addEventListener('keyup', (e) => {
-        if (Utils.isInputActive(e)) return;
         if (e.key === 'Shift') {
           Tools.shiftLink = false;
           Tools.applyNodeDrag();
         }
       });
 
-      window.addEventListener('mouseup', () => {
-        if (!Graph.snapEnabled()) return;
-        if (Tools.effective() !== 'move') return;
-        if (Graph.selectedNode) {
-          const id = Graph.selectedNode.id;
-          const n = Store.state.nodes.find(x => x.id === id);
-          if (!n) return;
-          if (n.fx !== null && n.fy !== null) {
-            const step = Config.snap.step;
-            const sx = Math.round((n.fx ?? n.x) / step) * step;
-            const sy = Math.round((n.fy ?? n.y) / step) * step;
-            Store.updateNode(id, { x: sx, y: sy, fx: sx, fy: sy });
-            UI.setStatus('Snapped.');
-          }
-        }
+      window.addEventListener('blur', () => {
+        Tools.shiftLink = false; Graph.linkDrag.active = false; Areas.draft = null; Tools.applyNodeDrag();
       });
 
       UI.stats();
